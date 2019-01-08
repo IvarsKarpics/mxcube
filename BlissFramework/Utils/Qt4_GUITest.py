@@ -20,4 +20,4 @@ def run_test():
     task_toolbox_brick.task_tool_box_widget.collect_now_task(wait=True)
 
     #Exit app    
-    getQApp().exit(0)
+    getQApp().quit()
