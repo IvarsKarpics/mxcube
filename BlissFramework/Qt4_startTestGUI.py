@@ -113,7 +113,7 @@ def run_test(gui_config_file=None):
     main_application.postEvent(supervisor,
         MyCustomEvent(Qt4_GUISupervisor.LOAD_GUI_EVENT, gui_config_file))
 
-    gevent.spawn_later(30, Qt4_GUITest.run_test)
+    gevent.spawn_later(120, Qt4_GUITest.run_test)
 
     # redirect errors to logger
     Qt4_ErrorHandler.enableStdErrRedirection()
