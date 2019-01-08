@@ -23,6 +23,7 @@ install:
   - make -j 2
   - sudo make install
   - cd ..
+  - pip install pytest==4.0.1
   - pip install pytest-xvfb 
 #  - sudo apt-get install python-qt4
   - sudo apt-get install libyaml-dev
