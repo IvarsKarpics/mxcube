@@ -168,6 +168,9 @@ if (qt_variant == 'PyQt4') or (qt_variant is None and not qt_imported):
         def getQApp():
             return qApp
 
+        def getQTest():
+            return QTest
+
         qt_imported = True
         qt_variant = "PyQt4"
         qt_version_no = list(map(int,QT_VERSION_STR.split(".")))
