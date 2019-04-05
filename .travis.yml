@@ -1,34 +1,27 @@
+install: 
+  - "sudo apt-get install libyaml-dev"
+  - "sudo apt-get install python-yaml"
+  - "if [[ $TRAVIS_PYTHON_VERSION == '2.7' ]]; then pip install -r requirements.txt pip install pytest==4.0.1 pytest-xvfb PyYAML pylint;"
+  - "curl -L -O http://sourceforge.net/projects/pyqt/files/sip/sip-4.14.1/sip-4.14.1.tar.gz"
+  - "tar -xf sip-4.14.1.tar.gz"
+  - "cd sip-4.14.1"
+  - "python configure.py"
+  - "make -j 2"
+  - "sudo make install"
+  - "cd .."
+  - "curl -L -O http://sourceforge.net/projects/pyqt/files/PyQt4/PyQt-4.9.5/PyQt-x11-gpl-4.9.5.tar.gz"
+  - "tar -xf PyQt-x11-gpl-4.9.5.tar.gz"
+  - "cd PyQt-x11-gpl-4.9.5"
+  - "python configure.py --confirm-license"
+  - "make -j 2"
+  - "sudo make install"
+  - "cd .. fi"
+  - "if [[ $TRAVIS_PYTHON_VERSION == '3'* ]]; then pip3 install -r requirements.txt; fi"
 language: python
-python:
+python: 
   - "2.7"
   - "3.6"
-install:
-  install:
-  - if [[ $TRAVIS_PYTHON_VERSION == '2.7' ]]; then
-       pip install -r requirements.txt
-       pip install pytest==4.0.1 pytest-xvfb PyYAML pylint;
-    fi
-  - if [[ $TRAVIS_PYTHON_VERSION == '3'* ]]; then
-       pip3 install -r requirements.txt;
-    fi
-  - sudo apt-get install libyaml-dev
-  - sudo apt-get install python-yaml
-
-  - curl -L -O http://sourceforge.net/projects/pyqt/files/sip/sip-4.14.1/sip-4.14.1.tar.gz
-  - tar -xf sip-4.14.1.tar.gz
-  - cd sip-4.14.1
-  - python configure.py
-  - make -j 2
-  - sudo make install
-  - cd ..
-  - curl -L -O http://sourceforge.net/projects/pyqt/files/PyQt4/PyQt-4.9.5/PyQt-x11-gpl-4.9.5.tar.gz
-  - tar -xf PyQt-x11-gpl-4.9.5.tar.gz
-  - cd PyQt-x11-gpl-4.9.5
-  - python configure.py --confirm-license
-  - make -j 2
-  - sudo make install
-  - cd ..
-script:
-  - python -m pytest
-  - python3 -m pytest
-  - pylint -E gui --extension-pkg-whitelist=PyQt5,PyQt4
+script: 
+  - "python -m pytest"
+  - "python3 -m pytest"
+  - "pylint -E gui --extension-pkg-whitelist=PyQt5,PyQt4"
