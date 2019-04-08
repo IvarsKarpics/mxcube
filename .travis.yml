@@ -1,18 +1,27 @@
 language: python
+
 python:
   - "2.7"
-  - "3.6"
+
+matrix:
+  include:
+    - python: 3.7
+      dist: xenial
+      sudo: true
+
 before_install:
   - if [[ $TRAVIS_PYTHON_VERSION == '2.7' ]]; then bash bin/install_qt4.sh; fi
   - if [[ $TRAVIS_PYTHON_VERSION == '3'* ]]; then bash bin/install_qt5.sh; fi
+
 install:
-  - if [[ $TRAVIS_PYTHON_VERSION == '2.7' ]]; then travis_retry pip install -r requirements_python2.txt pip install pytest==4.0.1 pytest-xvfb PyYAML pylint; fi
-  - if [[ $TRAVIS_PYTHON_VERSION == '3'* ]]; then travis_retry pip3 install -r requirements_python3.txt pip3 install pytest==4.0.1 pytest-xvfb PyYAML pylint; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == '2.7' ]]; then travis_retry pip install -r requirements_python2.txt pytest==4.0.1 pytest-xvfb PyYAML pylint; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == '3'* ]]; then travis_retry pip3 install -r requirements_python3.txt pytest pytest-xvfb PyYAML pylint; fi
   - sudo apt-get install libyaml-dev
   - sudo apt-get install python-yaml
+
 before_script:
   - "export DISPLAY=:99.0"
+
 script:
-  - if [[ $TRAVIS_PYTHON_VERSION == '2.7' ]]; then python -m pytest; fi
-  - if [[ $TRAVIS_PYTHON_VERSION == '3'* ]]; then python3 -m pytest; fi
+  - python -m pytest
   - pylint -E gui --extension-pkg-whitelist=PyQt5,PyQt4
