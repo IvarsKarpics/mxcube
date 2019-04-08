@@ -2,12 +2,7 @@ language: python
 
 python:
   - "2.7"
-
-matrix:
-  include:
-    - python: 3.7
-      dist: xenial
-      sudo: true
+  - "3.6"
 
 before_install:
   - if [[ $TRAVIS_PYTHON_VERSION == '2.7' ]]; then bash bin/install_qt4.sh; fi

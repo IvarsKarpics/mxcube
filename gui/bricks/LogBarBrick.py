@@ -47,7 +47,6 @@ class LogBarBrick(BaseWidget):
 
         # Internal values -----------------------------------------------------
         self.max_log_lines = -1
-        self.test_mode = False
 
         # Properties ----------------------------------------------------------
         self.add_property("maxLogLines", "integer", -1)
@@ -78,9 +77,6 @@ class LogBarBrick(BaseWidget):
         else:
             BaseWidget.property_changed(self, property_name, old_value, new_value)
 
-    def test(self):
-        self.test_mode = True
-
     def customEvent(self, event):
         """Event to add a new log record"""
         self.append_log_record(event.record)
@@ -110,5 +106,3 @@ class LogBarBrick(BaseWidget):
 
             if level == logging.ERROR:
                 self._status_bar_widget.toggle_background_color()
-                if test_mode:
-                    assert False, msg
