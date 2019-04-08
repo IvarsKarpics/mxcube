@@ -9,3 +9,4 @@ scipy
 matplotlib
 Pillow
 pylint
+lxml

@@ -113,7 +113,8 @@ elif "--pyqt3" in sys.argv:
 # PyQt5
 #
 if (qt_variant == "PyQt5") or (qt_variant is None and not qt_imported):
-    try:
+    #try:
+    if True:
         from PyQt5.QtCore import (
             pyqtSignal,
             pyqtSlot,
@@ -227,8 +228,8 @@ if (qt_variant == "PyQt5") or (qt_variant is None and not qt_imported):
         _ver = PYQT_VERSION_STR.split(".")
         ver = _ver + ["0"] * (3 - len(_ver))
         pyqt_version_no = list(map(int, ver))[:3]
-    except BaseException:
-        pass
+    #except BaseException:
+    #    pass
 
     try:
         from PyQt5.QtWebKit import *
