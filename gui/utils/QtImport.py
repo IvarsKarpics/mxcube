@@ -113,13 +113,13 @@ elif "--pyqt3" in sys.argv:
 # PyQt5
 #
 if (qt_variant == "PyQt5") or (qt_variant is None and not qt_imported):
-    #try:
-    if True:
+    try::
         from PyQt5.QtCore import (
             pyqtSignal,
             pyqtSlot,
             PYQT_VERSION_STR,
             Qt,
+            QCoreApplication,
             QDir,
             QEvent,
             QEventLoop,
@@ -130,47 +130,33 @@ if (qt_variant == "PyQt5") or (qt_variant is None and not qt_imported):
             QRectF,
             QRegExp,
             QSize,
-            QStringList,
             QT_VERSION_STR,
             QTimer,
-            SIGNAL,
         )
-        from PyQt5.QtGui import (
-            qApp,
+        from PyQt5.QtWidgets import (
             QAbstractItemView,
             QAction,
             QApplication,
-            QBrush,
             QButtonGroup,
             QCheckBox,
-            QColor,
             QComboBox,
-            QCursor,
             QDesktopWidget,
             QDial,
             QDialog,
             QDoubleSpinBox,
-            QDoubleValidator,
             QFileDialog,
-            QFont,
             QFrame,
             QGraphicsItem,
             QGraphicsPixmapItem,
             QGraphicsScene,
             QGraphicsView,
             QGridLayout,
-            QGroupBox,
+            QGroupBox, 
             QHBoxLayout,
             QHeaderView,
-            QKeySequence,
-            QIcon,
-            QImage,
-            QImageWriter,
-            QIntValidator,
             QLabel,
             QLayout,
             QLineEdit,
-            QLinearGradient,
             QListView,
             QListWidget,
             QListWidgetItem,
@@ -178,18 +164,10 @@ if (qt_variant == "PyQt5") or (qt_variant is None and not qt_imported):
             QMenu,
             QMenuBar,
             QMessageBox,
-            QPainter,
-            QPainterPath,
-            QPalette,
-            QPen,
-            QPixmap,
-            QPolygon,
-            QPrintDialog,
             QProgressBar,
             QProgressDialog,
             QPushButton,
             QRadioButton,
-            QRegExpValidator,
             QScrollArea,
             QScrollBar,
             QSizePolicy,
@@ -214,13 +192,34 @@ if (qt_variant == "PyQt5") or (qt_variant is None and not qt_imported):
             QTreeWidget,
             QTreeWidgetItem,
             QTreeWidgetItemIterator,
-            QValidator,
             QVBoxLayout,
             QWidget,
         )
+        from PyQt5.QtGui import (
+            QBrush,
+            QColor,
+            QCursor,
+            QDoubleValidator,
+            QFont,
+            QKeySequence,
+            QIcon,
+            QImage,
+            QIntValidator,
+            QLinearGradient,
+            QPainter,
+            QPainterPath,
+            QPalette,
+            QPen,
+            QPixmap,
+            QPolygon,
+            QRegExpValidator,
+            QValidator
+        )
         from PyQt5.uic import loadUi
 
+        QStringList = list
         getQApp = QCoreApplication.instance
+        qApp = QCoreApplication.instance  
 
         qt_imported = True
         qt_variant = "PyQt5"
@@ -228,18 +227,14 @@ if (qt_variant == "PyQt5") or (qt_variant is None and not qt_imported):
         _ver = PYQT_VERSION_STR.split(".")
         ver = _ver + ["0"] * (3 - len(_ver))
         pyqt_version_no = list(map(int, ver))[:3]
-    #except BaseException:
-    #    pass
-
-    try:
-        from PyQt5.QtWebKit import *
     except ImportError:
         pass
 
     try:
-        from PyQt5.QtSvg import *
-    except BaseException:
+        from PyQt5.QtWebKit import QWebPage
+    except ImportError:
         pass
+
 #
 # PyQt4
 #
@@ -252,19 +247,6 @@ if (qt_variant == "PyQt4") or (qt_variant is None and not qt_imported):
     #   !! this means the classes below will not exist !!
     # but code is guaranteed to be compatible
     try:
-        """
-        import sip
-        api2_classes = [
-            'QData','QDateTime','QString','QTextStream',
-            'QTime','QUrl', 'QVariant',
-        ]
-        for cl in api2_classes:
-            try:
-                sip.setapi(cl,2)
-            except:
-                pass
-        """
-
         from PyQt4.QtCore import (
             pyqtSignal,
             pyqtSlot,
@@ -315,7 +297,6 @@ if (qt_variant == "PyQt4") or (qt_variant is None and not qt_imported):
             QKeySequence,
             QIcon,
             QImage,
-            QImageWriter,
             QIntValidator,
             QLabel,
             QLayout,
@@ -334,7 +315,6 @@ if (qt_variant == "PyQt4") or (qt_variant is None and not qt_imported):
             QPen,
             QPixmap,
             QPolygon,
-            QPrintDialog,
             QProgressBar,
             QProgressDialog,
             QPushButton,

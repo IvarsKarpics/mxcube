@@ -17,7 +17,7 @@ wget --retry-connrefused https://sourceforge.net/projects/pyqt/files/sip/sip-$SI
 tar -xzf sip-$SIP_VERSION.tar.gz
 cd sip-$SIP_VERSION
 python$PYTHON_VERSION configure.py
-make -j 2
+make
 sudo make install
 cd ..
 
@@ -25,6 +25,6 @@ cd ..
 wget --retry-connrefused https://sourceforge.net/projects/pyqt/files/PyQt5/PyQt-$PYQT_VERSION/PyQt5_gpl-$PYQT_VERSION.tar.gz
 tar -xzf PyQt5_gpl-$PYQT_VERSION.tar.gz
 cd PyQt5_gpl-$PYQT_VERSION
-python$PYTHON_VERSION configure.py --confirm-license --qmake=/usr/lib/x86_64-linux-gnu/qt5/bin/qmake
-make -j 2
+python$PYTHON_VERSION configure.py
+make
 sudo make install
