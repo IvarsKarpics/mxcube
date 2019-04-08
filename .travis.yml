@@ -1,12 +1,15 @@
 language: python
 python:
   - "3.6"
+before_install:
+  - bash bin/install_qt.sh
 install:
   - pip3 install -r requirements_python3.txt
   - pip3 install pytest==4.0.1 pytest-xvfb PyYAML pylint
   - sudo apt-get install libyaml-dev
   - sudo apt-get install python-yaml
-  - sudo apt-get install python3-pyqt5 qttools5-dev-tools
+before_script:
+  - "export DISPLAY=:99.0"
 script:
   - python3 -m pytest
 #  - pylint -E gui --extension-pkg-whitelist=PyQt5,PyQt4
