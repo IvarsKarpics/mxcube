@@ -2,7 +2,7 @@ language: python
 python:
   - "3.6"
 install:
-  - pip3 install -r requirements.txt 
+  - pip3 install -r requirements_python3.txt
   - pip3 install pytest==4.0.1 pytest-xvfb PyYAML pylint
   - sudo apt-get install libyaml-dev
   - sudo apt-get install python-yaml
