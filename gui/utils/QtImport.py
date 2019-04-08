@@ -113,7 +113,7 @@ elif "--pyqt3" in sys.argv:
 # PyQt5
 #
 if (qt_variant == "PyQt5") or (qt_variant is None and not qt_imported):
-    try::
+    try:
         from PyQt5.QtCore import (
             pyqtSignal,
             pyqtSlot,
