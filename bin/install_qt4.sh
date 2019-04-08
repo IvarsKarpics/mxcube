@@ -16,7 +16,7 @@ cd ..
 curl -L -O http://sourceforge.net/projects/pyqt/files/PyQt4/PyQt-$PYQT_VERSION/PyQt-x11-gpl-$PYQT_VERSION.tar.gz
 tar -xf PyQt-x11-gpl-$PYQT_VERSION.tar.gz
 cd PyQt-x11-gpl-$PYQT_VERSION
-python configure.py
+python configure.py --confirm-license
 make -j 2
 sudo make install
 cd ..
