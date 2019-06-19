@@ -15,16 +15,16 @@
 #  GNU Lesser General Public License for more details.
 #
 #  You should have received a copy of the GNU Lesser General Public License
-#  along with MXCuBE.  If not, see <http://www.gnu.org/licenses/>.
+#  along with MXCuBE. If not, see <http://www.gnu.org/licenses/>.
 
 import logging
 
 import api
+
 from gui.utils import queue_item, QtImport
 from gui.utils.widget_utils import DataModelInputBinder
 from gui.widgets.data_path_widget import DataPathWidget
 from gui.widgets.acquisition_widget import AcquisitionWidget
-from HardwareRepository.HardwareObjects import queue_model_objects
 
 
 __credits__ = ["MXCuBE collaboration"]
@@ -78,9 +78,6 @@ class AdvancedParametersWidget(QtImport.QWidget):
         self._acq_widget.acq_widget_layout.energies_combo.hide()
         self._acq_widget.acq_widget_layout.shutterless_cbx.hide()
 
-    def init_api(self):
-        self._acq_widget.init_api()
-
     def mad_energy_selected(self, name, energy, state):
         path_template = self._data_collection.acquisitions[0].path_template
 
@@ -124,9 +121,6 @@ class AdvancedParametersWidget(QtImport.QWidget):
         # on that both models upto date, we need to refactor this part
         # so that both models are set before taking ceratin actions.
         # This workaround, works for the time beeing.
-        self._data_path_widget._data_model = self._data_collection.acquisitions[
-            0
-        ].path_template
         self._data_path_widget.update_data_model(
             self._data_collection.acquisitions[0].path_template
         )

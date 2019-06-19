@@ -49,7 +49,9 @@ class CreateCharWidget(CreateTaskBase):
         # Internal variables --------------------------------------------------
         self._vertical_dimension_widget = None
         self._current_selected_item = None
+        self._char = None
         self._char_params = None
+
         self.init_models()
         self._char_params_mib = DataModelInputBinder(self._char_params)
 
@@ -304,6 +306,7 @@ class CreateCharWidget(CreateTaskBase):
         char.run_characterisation = self._char_widget.characterisation_gbox.isChecked()
         char.wait_result = self._char_widget.wait_result_cbx.isChecked()
         char.run_diffraction_plan = self._char_widget.execute_plan_cbx.isChecked()
+        char.diff_plan_compression = self._tree_brick.compression_state
 
         tasks.append(char)
         self._path_template.run_number += 1

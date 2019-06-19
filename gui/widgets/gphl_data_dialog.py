@@ -20,6 +20,10 @@
 #  along with MXCuBE.  If not, see <http://www.gnu.org/licenses/>.
 
 """GPhL runtime-set parameter input widget. """
+from __future__ import division, absolute_import
+from __future__ import print_function, unicode_literals
+
+from HardwareRepository import ConvertUtils
 
 from gui.utils import Colors, QtImport
 from gui.utils.paramsgui import FieldsWidget
@@ -27,32 +31,6 @@ from gui.utils.paramsgui import FieldsWidget
 __copyright__ = """ Copyright © 2016 - 2019 by Global Phasing Ltd. """
 __license__ = "LGPLv3+"
 __author__ = "Rasmus H Fogh"
-
-
-class ParameterDialogWidget(QtImport.QWidget):
-    def __init__(self, parent=None, name="gphl_parameter_dialog_widget"):
-        QtImport.QWidget.__init__(self, parent)
-        if name is not None:
-            self.setObjectName(name)
-
-        # Properties ----------------------------------------------------------
-
-        # Signals ------------------------------------------------------------
-
-        # Slots ---------------------------------------------------------------
-
-        # Hardware objects ----------------------------------------------------
-
-        # Internal variables -------------------------------------------------
-
-        # Graphic elements ----------------------------------------------------
-
-    def get_parameters_map(self):
-        """Get key:value dictionary of parameter values"""
-        pass
-
-    def set_values(self, values_dict):
-        """set parameter values from input dictionary"""
 
 
 class SelectionTable(QtImport.QTableWidget):
@@ -92,7 +70,7 @@ class SelectionTable(QtImport.QTableWidget):
             wdg = QtImport.QLineEdit(self)
             wdg.setFont(QtImport.QFont("Courier"))
             wdg.setReadOnly(True)
-            wdg.setText(str(text))
+            wdg.setText(ConvertUtils.text_type(text))
             if colours:
                 colour = colours[rowNum]
                 if colour:
@@ -199,15 +177,15 @@ class GphlDataDialog(QtImport.QDialog):
         parameters = []
         info = None
         cplx = None
-        for dd in field_list:
-            if info is None and dd.get("variableName") == "_info":
+        for dd0 in field_list:
+            if info is None and dd0.get("variableName") == "_info":
                 # Info text - goes to info_gbox
-                info = dd
-            elif cplx is None and dd.get("variableName") == "_cplx":
+                info = dd0
+            elif cplx is None and dd0.get("variableName") == "_cplx":
                 # Complex parameter - goes to cplx_gbox
-                cplx = dd
+                cplx = dd0
             else:
-                parameters.append(dd)
+                parameters.append(dd0)
 
         # Info box
         if info is None:
@@ -253,11 +231,11 @@ class GphlDataDialog(QtImport.QDialog):
             )
 
             values = {}
-            for dd in field_list:
-                name = dd["variableName"]
-                value = dd.get("defaultValue")
+            for dd0 in field_list:
+                name = dd0["variableName"]
+                value = dd0.get("defaultValue")
                 if value is not None:
-                    dd[name] = value
+                    dd0[name] = value
             self.params_widget.set_values(values)
             self.parameter_gbox.show()
         else:

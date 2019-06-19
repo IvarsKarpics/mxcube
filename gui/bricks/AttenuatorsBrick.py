@@ -31,13 +31,14 @@ __category__ = "General"
 class AttenuatorsBrick(BaseWidget):
 
     STATES = {
-        "ON": Colors.color_to_hexa(Colors.LIGHT_GREEN),
-        "MOVING": Colors.color_to_hexa(Colors.LIGHT_YELLOW),
-        "FAULT": Colors.color_to_hexa(Colors.LIGHT_RED),
-        "UNKNOWN": Colors.color_to_hexa(Colors.DARK_GRAY),
+        "ready": Colors.LIGHT_GREEN,
+        "busy": Colors.LIGHT_YELLOW,
+        "error": Colors.LIGHT_RED,
+        "UNKNOWN": Colors.DARK_GRAY,
     }
 
     def __init__(self, *args):
+
         BaseWidget.__init__(self, *args)
 
         # Hardware objects ----------------------------------------------------
@@ -82,8 +83,9 @@ class AttenuatorsBrick(BaseWidget):
 
         # Other ---------------------------------------------------------------
         Colors.set_widget_color(
-            self.new_value_ledit, Colors.LINE_EDIT_ACTIVE, QtImport.QPalette.Base
+            self.new_value_ledit, Colors.LIGHT_GREEN, QtImport.QPalette.Base
         )
+
         self.new_value_validator = QtImport.QDoubleValidator(
             0, 100, 2, self.new_value_ledit
         )
@@ -91,18 +93,28 @@ class AttenuatorsBrick(BaseWidget):
 
         self.instance_synchronize("transmission_ledit", "new_value_ledit")
 
-    def run(self):
         if api.transmission is not None:
             self.connect(api.transmission, "deviceReady", self.connected)
             self.connect(api.transmission, "deviceNotReady", self.disconnected)
-            self.connect(api.transmission, "stateChanged", self.transmission_state_changed)
-            self.connect(api.transmission, "valueChanged", self.transmission_value_changed)
+            self.connect(
+                api.transmission, "stateChanged", self.transmission_state_changed
+            )
+            self.connect(
+                api.transmission, "transmissionChanged", self.transmission_value_changed
+            )
             self.connected()
             api.transmission.update_values()
         else:
             self.disconnected()
 
+    def connected(self):
+        self.setEnabled(True)
+
+    def disconnected(self):
+        self.setEnabled(False)
+
     def input_field_changed(self, input_field_text):
+        """Paints the QLineEdit green if entered values is acceptable"""
         if (
             self.new_value_validator.validate(input_field_text, 0)[0]
             == QtImport.QValidator.Acceptable
@@ -116,31 +128,29 @@ class AttenuatorsBrick(BaseWidget):
             )
 
     def current_value_changed(self):
+        """Sets new transmission value"""
         input_field_text = self.new_value_ledit.text()
 
         if (
             self.new_value_validator.validate(input_field_text, 0)[0]
             == QtImport.QValidator.Acceptable
         ):
-            api.transmission.set_value(float(input_field_text))
+            api.transmission.set_transmission(float(input_field_text))
             self.new_value_ledit.setText("")
             Colors.set_widget_color(
                 self.new_value_ledit, Colors.LINE_EDIT_ACTIVE, QtImport.QPalette.Base
             )
 
-    def connected(self):
-        self.setEnabled(True)
-
-    def disconnected(self):
-        self.setEnabled(False)
-
     def transmission_state_changed(self, transmission_state):
-        if transmission_state in self.STATES:
-            color = self.STATES[transmission_state]
-        else:
-            color = self.STATES["UNKNOWN"]
+        """Updates new value QLineEdit based on the state"""
+        Colors.set_widget_color(
+            self.new_value_ledit,
+            self.STATES.get(transmission_state, Colors.LIGHT_GRAY),
+            QtImport.QPalette.Base,
+        )
 
     def transmission_value_changed(self, new_value):
+        """Updates transmission value"""
         try:
             new_values_str = self["formatString"] % new_value
             self.transmission_ledit.setText("%s %%" % new_values_str)

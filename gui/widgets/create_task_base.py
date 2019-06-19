@@ -70,92 +70,16 @@ class CreateTaskBase(QtImport.QWidget):
         self._data_path_widget = None
         self._current_selected_items = []
         self._path_template = None
-        self._in_plate_mode = None
         self._enable_compression = None
 
-    def set_expert_mode(self, state):
-        if self._acq_widget:
-            self._acq_widget.acq_widget_layout.energy_label.setEnabled(state)
-            self._acq_widget.acq_widget_layout.energy_ledit.setEnabled(state)
-            if self._acq_widget.acq_widget_layout.findChild(
-                QtImport.QCheckBox, "mad_cbox"
-            ):
-                self._acq_widget.acq_widget_layout.mad_cbox.setEnabled(state)
-                self._acq_widget.acq_widget_layout.energies_combo.setEnabled(state)
-            if self._acq_widget.acq_widget_layout.findChild(
-                QtImport.QLabel, "first_image_label"
-            ):
-                self._acq_widget.acq_widget_layout.first_image_label.setEnabled(state)
-                self._acq_widget.acq_widget_layout.first_image_ledit.setEnabled(state)
-
-    def set_run_processing_parallel(self, state):
-        pass
-
-    def enable_compression(self, state):
-        if self._data_path_widget:
-            self._enable_compression = state
-            self._data_path_widget.data_path_layout.compression_cbox.setChecked(state)
-            self._data_path_widget.data_path_layout.compression_cbox.setVisible(state)
-            self._data_path_widget.update_file_name()
-
-    def init_models(self):
-        self.init_acq_model()
-        self.init_data_path_model()
-
-    def init_acq_model(self):
-        if self._acq_widget:
-            self._acq_widget.init_api()
-            def_acq_parameters = api.beamline_setup.get_default_acquisition_parameters()
-            self._acquisition_parameters.set_from_dict(def_acq_parameters.as_dict())
-            if api.diffractometer.in_plate_mode():
-                self._acq_widget.use_kappa(False)
-                self._acq_widget.use_max_osc_range(True)
-            else:
-                self._acq_widget.use_kappa(True)
-                self._acq_widget.use_max_osc_range(False)
-            self._acq_widget.update_osc_total_range()
-        else:
-            self._acquisition_parameters = queue_model_objects.AcquisitionParameters()
-
-    def init_data_path_model(self):
-        # Initialize the path_template of the widget to default
-        # values read from the beamline setup
-        if self._data_path_widget:
-            self._data_path_widget._base_image_dir = (
-                api.session.get_base_image_directory()
-            )
-            self._data_path_widget._base_process_dir = (
-                api.session.get_base_process_directory()
-            )
-
-            (data_directory, proc_directory) = self.get_default_directory()
-            self._path_template = api.beamline_setup.get_default_path_template()
-            self._path_template.directory = data_directory
-            self._path_template.process_directory = proc_directory
-            self._path_template.base_prefix = self.get_default_prefix()
-            self._path_template.run_number = api.queue_model.get_next_run_number(
-                  self._path_template
-            )
-            self._path_template.compression = self._enable_compression
-        else:
-            self._path_template = queue_model_objects.PathTemplate()
-
-    def tab_changed(self, tab_index, tab):
-        # Update the selection if in the main tab and logged in to
-        # ISPyB
-        if tab_index is 0 and api.session.proposal_code:
-            self.update_selection()
-
-    def init_api(self):
         self._in_plate_mode = api.diffractometer.in_plate_mode()
-
         try:
             api.energy.connect("energyChanged", self.set_energy)
             api.energy.connect(
                 "energyLimitsChanged", self.set_energy_limits
             )
             api.transmission.connect(
-                "valueChanged", self.set_transmission
+                "transmissionChanged", self.set_transmission
             )
             api.transmission.connect(
                 "limitsChanged", self.set_transmission_limits
@@ -190,7 +114,77 @@ class CreateTaskBase(QtImport.QWidget):
             msg = "Could not connect to one or more hardware objects " + str(ex)
             logging.getLogger("HWR").warning(msg)
 
-        self.init_models()
+    def set_expert_mode(self, state):
+        if self._acq_widget:
+            self._acq_widget.acq_widget_layout.energy_label.setEnabled(state)
+            self._acq_widget.acq_widget_layout.energy_ledit.setEnabled(state)
+            if self._acq_widget.acq_widget_layout.findChild(
+                QtImport.QCheckBox, "mad_cbox"
+            ):
+                self._acq_widget.acq_widget_layout.mad_cbox.setEnabled(state)
+                self._acq_widget.acq_widget_layout.energies_combo.setEnabled(state)
+            if self._acq_widget.acq_widget_layout.findChild(
+                QtImport.QLabel, "first_image_label"
+            ):
+                self._acq_widget.acq_widget_layout.first_image_label.setEnabled(state)
+                self._acq_widget.acq_widget_layout.first_image_ledit.setEnabled(state)
+
+    def set_run_processing_parallel(self, state):
+        pass
+
+    def enable_compression(self, state):
+        if self._data_path_widget:
+            self._enable_compression = state
+            self._data_path_widget.data_path_layout.compression_cbox.setChecked(state)
+            self._data_path_widget.data_path_layout.compression_cbox.setVisible(state)
+            self._data_path_widget.update_file_name()
+
+    def init_models(self):
+        self.init_acq_model()
+        self.init_data_path_model()
+
+    def init_acq_model(self):
+        if self._acq_widget:
+            def_acq_parameters = api.beamline_setup.get_default_acquisition_parameters()
+            self._acquisition_parameters.set_from_dict(def_acq_parameters.as_dict())
+            if api.diffractometer.in_plate_mode():
+                self._acq_widget.use_kappa(False)
+                self._acq_widget.use_max_osc_range(True)
+            else:
+                self._acq_widget.use_kappa(True)
+                self._acq_widget.use_max_osc_range(False)
+            self._acq_widget.update_osc_total_range()
+        else:
+            self._acquisition_parameters = queue_model_objects.AcquisitionParameters()
+
+    def init_data_path_model(self):
+        # Initialize the path_template of the widget to default
+        # values read from the beamline setup
+        if self._data_path_widget:
+            self._data_path_widget.set_base_image_directory(
+                api.session.get_base_image_directory()
+            )
+            self._data_path_widget.set_base_process_directory(
+                api.session.get_base_process_directory()
+            )
+
+            (data_directory, proc_directory) = self.get_default_directory()
+            self._path_template = api.beamline_setup.get_default_path_template()
+            self._path_template.directory = data_directory
+            self._path_template.process_directory = proc_directory
+            self._path_template.base_prefix = self.get_default_prefix()
+            self._path_template.run_number = api.queue_model.get_next_run_number(
+                  self._path_template
+            )
+            self._path_template.compression = self._enable_compression
+        else:
+            self._path_template = queue_model_objects.PathTemplate()
+
+    def tab_changed(self, tab_index, tab):
+        # Update the selection if in the main tab and logged in to
+        # ISPyB
+        if tab_index is 0 and api.session.proposal_code:
+            self.update_selection()
 
     def set_osc_start(self, new_value):
         acq_widget = self.get_acquisition_widget()
@@ -274,7 +268,7 @@ class CreateTaskBase(QtImport.QWidget):
         return result
 
     def set_energy(self, energy, wavelength):
-        if not self._item_is_dc() and energy:
+        if not self._item_is_dc() and energy is not None:
             acq_widget = self.get_acquisition_widget()
 
             if acq_widget:
@@ -282,16 +276,18 @@ class CreateTaskBase(QtImport.QWidget):
                 acq_widget.update_energy(energy, wavelength)
 
     def set_transmission(self, trans):
-        acq_widget = self.get_acquisition_widget()
+        if trans is not None:
+            acq_widget = self.get_acquisition_widget()
 
-        if not self._item_is_dc() and acq_widget:
-            acq_widget.update_transmission(trans)
+            if not self._item_is_dc() and acq_widget:
+                acq_widget.update_transmission(trans)
 
     def set_resolution(self, res):
-        acq_widget = self.get_acquisition_widget()
+        if res is not None:
+            acq_widget = self.get_acquisition_widget()
 
-        if not self._item_is_dc() and acq_widget:
-            acq_widget.update_resolution(res)
+            if not self._item_is_dc() and acq_widget:
+                acq_widget.update_resolution(res)
 
     def set_detector_roi_mode(self, detector_roi_mode):
         acq_widget = self.get_acquisition_widget()
@@ -500,7 +496,7 @@ class CreateTaskBase(QtImport.QWidget):
         omega = api.beamline_setup._get_omega_axis_position()
         kappa = api.beamline_setup._get_kappa_axis_position()
         kappa_phi = api.beamline_setup._get_kappa_phi_axis_position()
-        energy = api.beamline_setup._get_energy()
+        energy = api.energy.get_current_energy()
         transmission = api.beamline_setup._get_transmission()
         resolution = api.beamline_setup._get_resolution()
 
@@ -756,8 +752,6 @@ class CreateTaskBase(QtImport.QWidget):
            %s : sample name
         """
 
-        api.beamline_setup = api.beamline_setup
-
         acq_path_template = deepcopy(path_template)
 
         if "<sample_name>" in acq_path_template.directory:
@@ -829,7 +823,6 @@ class CreateTaskBase(QtImport.QWidget):
         parameters = self._acquisition_parameters
         path_template = self._path_template
         processing_parameters = self._processing_parameters
-        api.beamline_setup = api.beamline_setup
 
         acq = queue_model_objects.Acquisition()
 
@@ -935,7 +928,7 @@ class CreateTaskBase(QtImport.QWidget):
            - For mesh osc_range is defined by number of images per line
              and osc in the middle of mesh
         """
-        if api.diffractometer.in_plate_mode():
+        if api.diffractometer.in_plate_mode() and self._acq_widget:
             set_max_range = False
 
             if num_images is None:

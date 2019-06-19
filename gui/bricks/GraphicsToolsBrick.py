@@ -37,6 +37,7 @@ class GraphicsToolsBrick(BaseWidget):
 
         # Internal values -----------------------------------------------------
         self.target_menu = None
+        self.image_scale_list = []
 
         # Properties ----------------------------------------------------------
         self.add_property(
@@ -59,6 +60,7 @@ class GraphicsToolsBrick(BaseWidget):
         self.display_beam_size_action = None
         self.display_grid_action = None
         self.magnification_action = None
+        self.image_scale_menu = None
 
         # Layout --------------------------------------------------------------
 
@@ -179,7 +181,6 @@ class GraphicsToolsBrick(BaseWidget):
                 BaseWidget._menubar.insert_menu(self.tools_menu, 2)
 
             if BaseWidget._toolbar is not None:
-                toolbar_actions = []
                 for action in self.tools_menu.actions():
                     BaseWidget._toolbar.addAction(action)
 
@@ -284,9 +285,7 @@ class GraphicsToolsBrick(BaseWidget):
         self.camera_control_dialog.show()
 
     def display_beam_size_toggled(self):
-        api.graphics.display_beam_size(
-            self.display_beam_size_action.isChecked()
-        )
+        api.graphics.display_beam_size(self.display_beam_size_action.isChecked())
 
     def start_magnification_tool(self):
         api.graphics.set_magnification_mode(True)

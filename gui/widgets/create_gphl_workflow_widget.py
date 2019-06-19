@@ -18,6 +18,8 @@
 #
 #  You should have received a copy of the GNU Lesser General Public License
 #  along with MXCuBE.  If not, see <http://www.gnu.org/licenses/>.
+from __future__ import division, absolute_import
+from __future__ import print_function, unicode_literals
 
 import api
 
@@ -28,6 +30,7 @@ from gui.widgets.gphl_acquisition_widget import GphlAcquisitionWidget
 from gui.widgets.gphl_acquisition_widget import GphlDiffractcalWidget
 from gui.widgets.gphl_data_dialog import GphlDataDialog
 
+from HardwareRepository import ConvertUtils
 from HardwareRepository.HardwareObjects import queue_model_objects
 from HardwareRepository.HardwareObjects.queue_model_enumerables import States
 
@@ -63,7 +66,7 @@ class CreateGphlWorkflowWidget(CreateTaskBase):
             self._gphl_acq_widget, "gphl_acquisition_parameter_widget"
         )
         self._gphl_diffractcal_widget = GphlDiffractcalWidget(
-            self._gphl_acq_widget, "gphl_diffractcal_widget",
+            self._gphl_acq_widget, "gphl_diffractcal_widget"
         )
 
         self._data_path_widget = DataPathWidget(
@@ -74,7 +77,6 @@ class CreateGphlWorkflowWidget(CreateTaskBase):
         data_path_layout.file_name_value_label.hide()
         data_path_layout.run_number_label.hide()
         data_path_layout.run_number_ledit.hide()
-        data_path_layout.prefix_ledit.setReadOnly(True)
         data_path_layout.folder_ledit.setReadOnly(True)
 
         # Layout --------------------------------------------------------------
@@ -118,25 +120,29 @@ class CreateGphlWorkflowWidget(CreateTaskBase):
 
     def workflow_selected(self):
         # necessary as this comes in as a QString object
-        name = str(self._workflow_cbox.currentText())
+        name = ConvertUtils.text_type(self._workflow_cbox.currentText())
         # if reset or name != self._previous_workflow:
-        xx = self._workflow_cbox
-        xx.setCurrentIndex(xx.findText(name))
+        xx0 = self._workflow_cbox
+        xx0.setCurrentIndex(xx0.findText(name))
         self.init_models()
         self._data_path_widget.update_data_model(self._path_template)
 
         parameters = api.gphl_workflow.get_available_workflows()[name]
         strategy_type = parameters.get("strategy_type")
         if strategy_type == "transcal":
+            # NB Once we do not have to set unique prefixes, this should be readOnly
+            self._data_path_widget.data_path_layout.prefix_ledit.setReadOnly(False)
             self._gphl_acq_widget.hide()
         elif strategy_type == "diffractcal":
             # TODO update this
+            self._data_path_widget.data_path_layout.prefix_ledit.setReadOnly(True)
             self._gphl_diffractcal_widget.populate_widget()
             self._gphl_acq_widget.show()
             self._gphl_diffractcal_widget.show()
             self._gphl_acq_param_widget.hide()
         else:
             # acquisition type strategy
+            self._data_path_widget.data_path_layout.prefix_ledit.setReadOnly(True)
             self._gphl_acq_param_widget.populate_widget()
             self._gphl_acq_widget.show()
             self._gphl_diffractcal_widget.hide()
@@ -189,8 +195,8 @@ class CreateGphlWorkflowWidget(CreateTaskBase):
                 model = item.get_model()
                 if isinstance(model, queue_model_objects.GphlWorkflow):
                     dialog = tree_brick.dc_tree_widget.confirm_dialog
-                    ss = dialog.conf_dialog_layout.take_snapshots_combo.currentText()
-                    model.set_snapshot_count(int(ss) if ss else 0)
+                    ss0 = dialog.conf_dialog_layout.take_snapshots_combo.currentText()
+                    model.set_snapshot_count(int(ss0) if ss0 else 0)
 
     # Called by the owning widget (task_toolbox_widget) to create
     # a collection. When a data collection group is selected.
@@ -215,7 +221,7 @@ class CreateGphlWorkflowWidget(CreateTaskBase):
                 )
 
         wf = queue_model_objects.GphlWorkflow(workflow_hwobj)
-        wf_type = str(self._workflow_cbox.currentText())
+        wf_type = ConvertUtils.text_type(self._workflow_cbox.currentText())
         wf.set_type(wf_type)
 
         if self.current_prefix:
@@ -231,8 +237,8 @@ class CreateGphlWorkflowWidget(CreateTaskBase):
             pass
 
         elif strategy_type.startswith("diffractcal"):
-            ss = self._gphl_diffractcal_widget.get_parameter_value("test_crystal")
-            crystal_data = self._gphl_diffractcal_widget.test_crystals.get(ss)
+            ss0 = self._gphl_diffractcal_widget.get_parameter_value("test_crystal")
+            crystal_data = self._gphl_diffractcal_widget.test_crystals.get(ss0)
             wf.set_space_group(crystal_data.space_group)
             wf.set_cell_parameters(
                 tuple(
@@ -240,11 +246,18 @@ class CreateGphlWorkflowWidget(CreateTaskBase):
                     for tag in ("a", "b", "c", "alpha", "beta", "gamma")
                 )
             )
+            tag = self._gphl_acq_param_widget.get_parameter_value("dose_budget")
+            wf.set_dose_budget(api.gphl_workflow.dose_budgets.get(tag))
+            # The entire strategy runs as a 'characterisation'
+            wf.set_characterisation_budget_fraction(1.0)
         else:
             # Coulds be native_... phasing_... etc.
 
             wf.set_space_group(
                 self._gphl_acq_param_widget.get_parameter_value("space_group")
+            )
+            wf.set_characterisation_strategy(
+                self._gphl_acq_param_widget.get_parameter_value("characterisation_strategy")
             )
             tag = self._gphl_acq_param_widget.get_parameter_value("crystal_system")
             crystal_system, point_group = None, None
@@ -258,6 +271,16 @@ class CreateGphlWorkflowWidget(CreateTaskBase):
             wf.set_point_group(point_group)
             wf.set_crystal_system(crystal_system)
             wf.set_beam_energies(wf_parameters["beam_energies"])
+            tag = self._gphl_acq_param_widget.get_parameter_value("dose_budget")
+            wf.set_dose_budget(api.gphl_workflow.dose_budgets.get(tag))
+            val = self._gphl_acq_param_widget.get_parameter_value(
+                "relative_rad_sensitivity"
+            )
+            wf.set_relative_rad_sensitivity(val)
+            wf.set_characterisation_budget_fraction(
+                api.gphl_workflow.getProperty("characterisation_budget_percent", 5.0)
+                / 100.0
+            )
 
         tasks.append(wf)
 

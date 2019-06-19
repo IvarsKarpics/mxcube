@@ -20,6 +20,8 @@
 #  along with MXCuBE.  If not, see <http://www.gnu.org/licenses/>.
 
 """GPhL bespoke input widget. Built from DataCollectParametersWidget"""
+from __future__ import division, absolute_import
+from __future__ import print_function, unicode_literals
 
 import logging
 from collections import namedtuple
@@ -74,6 +76,7 @@ class GphlSetupWidget(QtImport.QWidget):
         self._widget_data = OrderedDict()
         self._data_object = GphlAcquisitionData()
         self._pulldowns = {}
+        self._pulldown_defaults = {}
         self._parameter_mib = DataModelInputBinder(self._data_object)
 
         # Graphic elements ----------------------------------------------------
@@ -94,10 +97,10 @@ class GphlSetupWidget(QtImport.QWidget):
             self.set_parameter_enabled(tag, value, warn=False)
 
     def set_parameter_enabled(self, tag, value, warn=True):
-        tt = self._widget_data.get(tag)
-        if tt:
-            if hasattr(tt[0], "setEnabled"):
-                tt[0].setEnabled(value)
+        tt0 = self._widget_data.get(tag)
+        if tt0:
+            if hasattr(tt0[0], "setEnabled"):
+                tt0[0].setEnabled(value)
             elif warn:
                 logging.getLogger().warning(
                     "%s Widget has no attribute setEnabled" % tag
@@ -108,7 +111,7 @@ class GphlSetupWidget(QtImport.QWidget):
     def get_data_object(self):
         return self._data_object
 
-    def populate_widget(self, **kw):
+    def populate_widget(self, **kwargs):
 
         self._data_object = data_object = GphlAcquisitionData()
         self._parameter_mib.bindings.clear()
@@ -118,7 +121,13 @@ class GphlSetupWidget(QtImport.QWidget):
             widget = self._widget_data[field_name][0]
             widget.clear()
             widget.addItems(list(QtImport.QString(tag) for tag in tags))
-            widget.setCurrentIndex(0)
+            default_label = self._pulldown_defaults.get(field_name)
+            if default_label is None:
+                widget.setCurrentIndex(0)
+                self._data_object.space_group = 0
+
+            else:
+                widget.setCurrentIndex(widget.findText(default_label))
 
     def set_parameter_value(self, name, value):
         """Set value - NB ComboBoxes are set by text, not index"""
@@ -172,8 +181,7 @@ class GphlSetupWidget(QtImport.QWidget):
 class GphlDiffractcalWidget(GphlSetupWidget):
     """Input widget for GPhL diffractometer calibration setup"""
 
-    def __init__(
-        self, parent=None, name="gphl_acquisition_widget"):
+    def __init__(self, parent=None, name="gphl_acquisition_widget"):
         GphlSetupWidget.__init__(self, parent=parent, name=name)
 
         _parameters_widget = self._parameters_widget
@@ -182,10 +190,10 @@ class GphlDiffractcalWidget(GphlSetupWidget):
 
         # Get test crystal data
         self.test_crystals = OrderedDict()
-        xx = next(api.gphl_workflow.getObjects("test_crystals"))
-        for test_crystal in xx.getObjects("test_crystal"):
-            dd = test_crystal.getProperties()
-            self.test_crystals[dd["name"]] = CrystalData(**dd)
+        xx0 = next(api.gphl_workflow.getObjects("test_crystals"))
+        for test_crystal in xx0.getObjects("test_crystal"):
+            dd0 = test_crystal.getProperties()
+            self.test_crystals[dd0["name"]] = CrystalData(**dd0)
 
         row = 0
         field_name = "test_crystal"
@@ -211,17 +219,47 @@ class GphlDiffractcalWidget(GphlSetupWidget):
         _parameters_widget.layout().addWidget(label, row, 1)
         self._widget_data[label_name] = (label, str, None, label_str)
 
-    def populate_widget(self, **kw):
-        GphlSetupWidget.populate_widget(self, **kw)
+        row += 1
+        field_name = "dose_budget"
+        label_name = self._get_label_name(field_name)
+        label_str = "Dose budget (MGy) :"
+        label = QtImport.QLabel(label_str, _parameters_widget)
+        _parameters_widget.layout().addWidget(label, row, 0)
+        self._widget_data[label_name] = (label, str, None, label_str)
+        widget = QtImport.QComboBox()
+        _parameters_widget.layout().addWidget(widget, row, 1)
+        self._pulldowns[field_name] = list(api.gphl_workflow.dose_budgets)
+        self._pulldown_defaults[
+            field_name
+        ] = api.gphl_workflow.default_dose_budget_label
+        indx = self._pulldowns[field_name].index(
+            api.gphl_workflow.default_dose_budget_label
+        )
+        self._widget_data[field_name] = (widget, str, None, indx)
+
+        row += 1
+        field_name = "relative_rad_sensitivity"
+        label_name = self._get_label_name(field_name)
+        label_str = "Rel. radiation sensitivity"
+        label = QtImport.QLabel(label_str, _parameters_widget)
+        _parameters_widget.layout().addWidget(label, row, 0)
+        self._widget_data[label_name] = (label, str, None, label_str)
+        widget = QtImport.QLineEdit()
+        _parameters_widget.layout().addWidget(widget, row, 1)
+        validator = QtImport.QDoubleValidator(0, 100, 4, widget)
+        self._widget_data[field_name] = (widget, float, validator, 1.0)
+
+    def populate_widget(self, **kwargs):
+        GphlSetupWidget.populate_widget(self, **kwargs)
 
         data_object = self._data_object
 
-        for tag, tt in self._widget_data.items():
-            widget, w_type, validator, value = tt
+        for tag, tt0 in self._widget_data.items():
+            widget, w_type, validator, value = tt0
             widget.show()
 
-            if tag in kw:
-                value = kw[tag]
+            if tag in kwargs:
+                value = kwargs[tag]
             setattr(data_object, tag, value)
             self._parameter_mib.bind_value_update(tag, widget, w_type, validator)
         # Must be redone here, after values and bindings are set
@@ -310,8 +348,54 @@ class GphlAcquisitionWidget(GphlSetupWidget):
         _parameters_widget.layout().addWidget(widget, row, 1)
         self._widget_data[field_name] = (widget, str, None, 0)
 
-    def populate_widget(self, **kw):
-        GphlSetupWidget.populate_widget(self, **kw)
+        row += 1
+        field_name = "characterisation_strategy"
+        label_name = self._get_label_name(field_name)
+        label_str = "Characterisation strategy :"
+        label = QtImport.QLabel(label_str, _parameters_widget)
+        _parameters_widget.layout().addWidget(label, row, 0)
+        self._widget_data[label_name] = (label, str, None, label_str)
+        widget = QtImport.QComboBox()
+        _parameters_widget.layout().addWidget(widget, row, 1)
+        self._widget_data[field_name] = (widget, str, None, 0)
+        strategy_names = api.gphl_workflow.getProperty(
+            "characterisation_strategies"
+        ).split()
+        self._pulldowns[field_name] = strategy_names
+
+        row += 1
+        field_name = "dose_budget"
+        label_name = self._get_label_name(field_name)
+        label_str = "Dose budget (MGy) :"
+        label = QtImport.QLabel(label_str, _parameters_widget)
+        _parameters_widget.layout().addWidget(label, row, 0)
+        self._widget_data[label_name] = (label, str, None, label_str)
+        widget = QtImport.QComboBox()
+        _parameters_widget.layout().addWidget(widget, row, 1)
+        self._widget_data[field_name] = (widget, str, None, 0)
+        self._pulldowns[field_name] = list(api.gphl_workflow.dose_budgets)
+        self._pulldown_defaults[
+            field_name
+        ] = api.gphl_workflow.default_dose_budget_label
+        indx = self._pulldowns[field_name].index(
+            api.gphl_workflow.default_dose_budget_label
+        )
+        self._widget_data[field_name] = (widget, str, None, indx)
+
+        row += 1
+        field_name = "relative_rad_sensitivity"
+        label_name = self._get_label_name(field_name)
+        label_str = "Rel. radiation sensitivity"
+        label = QtImport.QLabel(label_str, _parameters_widget)
+        _parameters_widget.layout().addWidget(label, row, 0)
+        self._widget_data[label_name] = (label, str, None, label_str)
+        widget = QtImport.QLineEdit()
+        _parameters_widget.layout().addWidget(widget, row, 1)
+        validator = QtImport.QDoubleValidator(0, 100, 4, widget)
+        self._widget_data[field_name] = (widget, float, validator, 1.0)
+
+    def populate_widget(self, **kwargs):
+        GphlSetupWidget.populate_widget(self, **kwargs)
 
         data_object = self._data_object
 
@@ -321,15 +405,15 @@ class GphlAcquisitionWidget(GphlSetupWidget):
 
         skip_fields = []
 
-        for tag, tt in self._widget_data.items():
+        for tag, tt0 in self._widget_data.items():
             if tag in skip_fields:
-                tt[0].hide()
+                tt0[0].hide()
             else:
-                widget, w_type, validator, value = tt
+                widget, w_type, validator, value = tt0
                 widget.show()
 
-                if tag in kw:
-                    value = kw[tag]
+                if tag in kwargs:
+                    value = kwargs[tag]
                 setattr(data_object, tag, value)
                 self._parameter_mib.bind_value_update(tag, widget, w_type, validator)
 
@@ -342,10 +426,10 @@ class GphlAcquisitionWidget(GphlSetupWidget):
             # Refresh space_group pulldown to reflect crystal_system pulldown
             crystal_system = self.get_parameter_value("crystal_system") or ""
             data = self._CRYSTAL_SYSTEM_DATA[crystal_system]
-            ll = self._pulldowns["space_group"] = []
+            ll0 = self._pulldowns["space_group"] = []
             if data.crystal_system:
-                ll.append("")
-                ll.extend(
+                ll0.append("")
+                ll0.extend(
                     [
                         x.name
                         for x in queue_model_enumerables.SPACEGROUP_DATA
@@ -353,11 +437,11 @@ class GphlAcquisitionWidget(GphlSetupWidget):
                     ]
                 )
             else:
-                ll.extend(queue_model_enumerables.XTAL_SPACEGROUPS)
+                ll0.extend(queue_model_enumerables.XTAL_SPACEGROUPS)
 
             widget = self._widget_data["space_group"][0]
             widget.clear()
-            widget.addItems(list(QtImport.QString(tag) for tag in ll))
+            widget.addItems(list(QtImport.QString(tag) for tag in ll0))
             self._data_object.space_group = 0
             # widget.setCurrentIndex(0)
             # self._parameter_mib._update_widget('space_group', None)
