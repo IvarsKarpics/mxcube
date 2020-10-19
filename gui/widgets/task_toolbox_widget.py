@@ -18,8 +18,8 @@
 #  along with MXCuBE.  If not, see <http://www.gnu.org/licenses/>.
 
 import logging
+import importlib
 
-import api
 from gui.utils import Icons, queue_item, QtImport
 from gui.widgets.create_discrete_widget import CreateDiscreteWidget
 from gui.widgets.create_helical_widget import CreateHelicalWidget
@@ -32,6 +32,8 @@ from gui.widgets.create_xray_imaging_widget import CreateXrayImagingWidget
 from gui.widgets.create_still_scan_widget import CreateStillScanWidget
 
 from HardwareRepository.HardwareObjects import queue_model_objects
+
+from HardwareRepository import HardwareRepository as HWR
 
 
 __credits__ = ["MXCuBE collaboration"]
@@ -52,6 +54,7 @@ class TaskToolBoxWidget(QtImport.QWidget):
         self.path_conflict = False
         self.acq_conflict = False
         self.enable_collect = False
+        self.create_task_widgets = {}
 
         # Graphic elements ----------------------------------------------------
         self.method_label = QtImport.QLabel("Collection method", self)
@@ -66,7 +69,7 @@ class TaskToolBoxWidget(QtImport.QWidget):
         self.helical_page = CreateHelicalWidget(self.tool_box, "helical_page")
         self.energy_scan_page = CreateEnergyScanWidget(self.tool_box, "energy_scan")
         self.xrf_spectrum_page = CreateXRFSpectrumWidget(self.tool_box, "xrf_spectrum")
-        if hasattr(parent.get_hardware_object("beamline-setup"), "gphl_workflow_hwobj"):
+        if HWR.beamline.gphl_workflow is not None:
             self.gphl_workflow_page = CreateGphlWorkflowWidget(
                 self.tool_box, "gphl_workflow"
             )
@@ -135,6 +138,39 @@ class TaskToolBoxWidget(QtImport.QWidget):
             )
 
         # Other ---------------------------------------------------------------
+        in_plate_mode = HWR.beamline.diffractometer.in_plate_mode()
+
+        if (
+            HWR.beamline.energy_scan is None
+            or in_plate_mode
+            or not HWR.beamline.tunable_wavelength
+        ):
+            self.hide_task(self.energy_scan_page)
+            logging.getLogger("HWR").info("Energy scan task not available")
+
+        if HWR.beamline.xrf_spectrum is None or in_plate_mode:
+            self.hide_task(self.xrf_spectrum_page)
+            logging.getLogger("HWR").info("XRF spectrum task not available")
+
+        if not HWR.beamline.imaging or in_plate_mode:
+            self.hide_task(self.xray_imaging_page)
+            logging.getLogger("HWR").info("Xray Imaging task not available")
+
+        if HWR.beamline.gphl_connection and HWR.beamline.gphl_workflow:
+            self.gphl_workflow_page.initialise_workflows()
+        else:
+            logging.getLogger("HWR").info("GPhL workflow task not available")
+
+    def set_available_tasks(self, available_tasks):
+        for task_name in available_tasks.split():
+            module_name = "gui.widgets.create_%s_widget" % task_name
+            class_name = "Create%sWidget" % task_name.title().replace(" ", "")
+            create_task_widget_cls = getattr(
+                importlib.import_module(module_name), class_name
+            )
+            create_task_widget = create_task_widget_cls(self.tool_box, task_name)
+            self.tool_box.addItem(create_task_widget, task_name.title())
+            self.create_task_widgets[task_name] = create_task_widget
 
     def adjust_width(self, width):
         # Adjust periodic table width
@@ -146,9 +182,9 @@ class TaskToolBoxWidget(QtImport.QWidget):
         for i in range(0, self.tool_box.count()):
             self.tool_box.widget(i).set_expert_mode(state)
 
-    def enable_compression(self, status):
+    def enable_compression(self, state):
         for i in range(0, self.tool_box.count()):
-            self.tool_box.widget(i).enable_compression(status)
+            self.tool_box.widget(i).enable_compression(state)
 
     def set_tree_brick(self, brick):
         """Sets the tree brick of each page in the toolbox.
@@ -159,39 +195,13 @@ class TaskToolBoxWidget(QtImport.QWidget):
         self.tree_brick.dc_tree_widget.enableCollectSignal.connect(
             self.enable_collect_changed
         )
+        self.selection_changed(self.tree_brick.get_selected_items())
 
     def use_osc_start_cbox(self, status):
         for i in range(0, self.tool_box.count()):
             acq_widget = self.tool_box.widget(i).get_acquisition_widget()
             if acq_widget:
                 acq_widget.use_osc_start(status)
-
-    def init_api(self):
-        for i in range(0, self.tool_box.count()):
-            self.tool_box.widget(i).init_api()
-
-        in_plate_mode = api.diffractometer.in_plate_mode()
-
-        if (
-            api.energyscan is None
-            or in_plate_mode
-            or not api.beamline_setup.tunable_wavelength()
-        ):
-            self.hide_task(self.energy_scan_page)
-            logging.getLogger("HWR").info("Energy scan task not available")
-
-        if api.xrf_spectrum is None or in_plate_mode:
-            self.hide_task(self.xrf_spectrum_page)
-            logging.getLogger("HWR").info("XRF spectrum task not available")
-
-        if not hasattr(api.beamline_setup, "xray_imaging_hwobj") or in_plate_mode:
-            self.hide_task(self.xray_imaging_page)
-            logging.getLogger("HWR").info("Xray Imaging task not available")
-
-        if api.gphl_connection and api.gphl_workflow:
-            self.gphl_workflow_page.initialise_workflows()
-        else:
-            logging.getLogger("HWR").info("GPhL workflow task not available")
 
     def hide_task(self, task_page):
         self.tool_box.removeItem(self.tool_box.indexOf(task_page))
@@ -238,7 +248,7 @@ class TaskToolBoxWidget(QtImport.QWidget):
 
                 new_pt.directory = previous_pt.directory
                 new_pt.base_prefix = previous_pt.base_prefix
-                new_pt.run_number = api.queue_model.get_next_run_number(
+                new_pt.run_number = HWR.beamline.queue_model.get_next_run_number(
                     new_pt
                 )
                 self.create_task_button.setEnabled(True)
@@ -334,13 +344,12 @@ class TaskToolBoxWidget(QtImport.QWidget):
 
             if not items:
                 logging.getLogger("GUI").warning(
-                    "Select the sample or group you " "would like to add to."
+                    "Select the sample, basket or task group you would like to add to."
                 )
             else:
                 for item in items:
-                    shapes = api.graphics.get_selected_points()
+                    shapes = HWR.beamline.sample_view.get_selected_points()
                     task_model = item.get_model()
-
                     # TODO Consider if GPhL workflow needs task-per-shape
                     # like xrf does
 
@@ -360,7 +369,7 @@ class TaskToolBoxWidget(QtImport.QWidget):
                             self.create_task(task_model)
                     elif isinstance(task_model, queue_model_objects.Basket):
                         for sample_node in task_model.get_sample_list():
-                            child_task_model = self.create_task_group(sample_node)
+                            task_group = self.create_task_group(sample_node)
                             if self.tool_box.currentWidget() in (
                                 self.discrete_page,
                                 self.char_page,
@@ -369,9 +378,9 @@ class TaskToolBoxWidget(QtImport.QWidget):
                                 self.xray_imaging_page,
                             ) and len(shapes):
                                 for shape in shapes:
-                                    self.create_task(child_task_model, shape)
+                                    self.create_task(task_group, shape)
                             else:
-                                self.create_task(child_task_model)
+                                self.create_task(task_group)
                     else:
                         if self.tool_box.currentWidget() in (
                             self.discrete_page,
@@ -393,12 +402,12 @@ class TaskToolBoxWidget(QtImport.QWidget):
         group_task_node = queue_model_objects.TaskGroup()
         current_item = self.tool_box.currentWidget()
 
-        group_name = current_item._task_node_name
+        group_name = current_item.get_task_node_name()
         group_task_node.set_name(group_name)
         num = task_model.get_next_number_for_name(group_name)
         group_task_node.set_number(num)
 
-        api.queue_model.add_child(task_model, group_task_node)
+        HWR.beamline.queue_model.add_child(task_model, group_task_node)
 
         return group_task_node
 
@@ -409,12 +418,12 @@ class TaskToolBoxWidget(QtImport.QWidget):
             task_list = self.tool_box.currentWidget().create_task(sample, shape)
 
             for child_task_node in task_list:
-                api.queue_model.add_child(task_node, child_task_node)
+                HWR.beamline.queue_model.add_child(task_node, child_task_node)
         # The selected item is a task, make a copy.
         else:
-            new_node = api.queue_model.copy_node(task_node)
+            new_node = HWR.beamline.queue_model.copy_node(task_node)
             new_snapshot = (
-                api.graphics.get_scene_snapshot()
+                HWR.beamline.sample_view.get_scene_snapshot()
             )
 
             if isinstance(task_node, queue_model_objects.Characterisation):
@@ -431,14 +440,40 @@ class TaskToolBoxWidget(QtImport.QWidget):
             ):
                 new_node.centred_position.snapshot_image = new_snapshot
 
-            api.queue_model.add_child(
+            HWR.beamline.queue_model.add_child(
                 task_node.get_parent(), new_node
             )
 
     def collect_now_button_click(self):
-        self.collect_now_task()
+        if not self.tree_brick.dc_tree_widget.enable_collect_condition:
+            logging.getLogger("GUI").warning("Collections are disabled")
 
-    def collect_now_task(self, wait=False):
+        selected_items = self.tree_brick.get_selected_items()
+        mounted_sample_item = self.tree_brick.dc_tree_widget.get_mounted_sample_item()
+        will_mount_sample = False
+
+        for item in selected_items:
+            if isinstance(item, queue_item.SampleQueueItem):
+                if item != mounted_sample_item:
+                    will_mount_sample = True
+            else:
+                sample_item = item.get_sample_view_item()
+                if sample_item != mounted_sample_item:
+                    will_mount_sample = True
+
+        if will_mount_sample:
+            conf_msg = "One or several not mounted samples are selected.\n" +\
+                       "Before collecting sample(s) will be mounted. Continue?"
+            if (
+                QtImport.QMessageBox.warning(
+                      None, "Question", conf_msg,
+                      QtImport.QMessageBox.Ok, QtImport.QMessageBox.No
+                )
+                == QtImport.QMessageBox.No
+            ):
+                return
+
+
         self.create_task_button_click()
         collect_items = []
         for item in self.tree_brick.dc_tree_widget.get_collect_items():
@@ -452,7 +487,7 @@ class TaskToolBoxWidget(QtImport.QWidget):
             else:
                 collect_items.append(item)
         if self.tree_brick.dc_tree_widget.enable_collect_condition:
-            self.tree_brick.dc_tree_widget.collect_items(collect_items, wait=wait)
+            self.tree_brick.dc_tree_widget.collect_items(collect_items)
         else:
             logging.getLogger("GUI").warning("Collections are disabled")
 

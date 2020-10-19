@@ -1,4 +1,4 @@
-#
+        #
 #  Project: MXCuBE
 #  https://github.com/mxcube
 #
@@ -26,14 +26,17 @@ import pickle
 import logging
 import collections
 
-import yaml
+try:
+    import ruamel.yaml as yaml
+except ImportError:
+    import yaml
 
 from gui import set_splash_screen
 from gui import Configuration, GUIBuilder
 from gui.utils import GUIDisplay, Icons, Colors, QtImport
-from gui.BaseComponents import BaseWidget
+from gui.BaseComponents import BaseWidget, NullBrick
 
-from HardwareRepository import HardwareRepository
+from HardwareRepository import HardwareRepository as HWR
 
 LOAD_GUI_EVENT = QtImport.QEvent.MaxUser
 
@@ -41,7 +44,6 @@ LOAD_GUI_EVENT = QtImport.QEvent.MaxUser
 __credits__ = ["MXCuBE collaboration"]
 __license__ = "LGPLv3+"
 __category__ = "General"
-
 
 
 class SplashScreen(QtImport.QSplashScreen):
@@ -140,7 +142,7 @@ class GUISupervisor(QtImport.QWidget):
         self.user_settings = None
 
         self.launch_in_design_mode = design_mode
-        self.hardware_repository = HardwareRepository.getHardwareRepository()
+        self.hardware_repository = HWR.get_hardware_repository()
         self.show_maximized = show_maximized
         self.no_border = no_border
         self.windows = []
@@ -218,7 +220,7 @@ class GUISupervisor(QtImport.QWidget):
                                             if load_from_dict:
                                                 prop_value = prop["value"]
                                             else:
-                                                prop_value = prop.getValue()
+                                                prop_value = prop.get_value()
                                             if isinstance(
                                                     prop_value, type("")
                                             ) and prop_value.startswith("/"):
@@ -245,7 +247,7 @@ class GUISupervisor(QtImport.QWidget):
                         if gui_config_file.endswith(".json"):
                             raw_config = json.load(gui_file)
                         elif gui_config_file.endswith(".yml"):
-                            raw_config = yaml.load(gui_file)
+                            raw_config = yaml.safe_load(gui_file)
                         else:
                             raw_config = eval(gui_file.read())
                     except BaseException:
@@ -287,7 +289,7 @@ class GUISupervisor(QtImport.QWidget):
                     if len(self.configuration.windows) == 0:
                         return self.new_gui()
 
-                    self.hardware_repository.printReport()
+                    #self.hardware_repository.print_report()
 
                     if self.launch_in_design_mode:
                         self.framework = GUIBuilder.GUIBuilder()
@@ -335,6 +337,7 @@ class GUISupervisor(QtImport.QWidget):
             display.set_caption(window["properties"]["caption"])
             display.draw_preview(window, id(display))
             display.close_on_exit = window["properties"]["closeOnExit"]
+            display.set_keep_open(window["properties"]["keepOpen"])
             display.set_font_size(window["properties"]["fontSize"])
 
             if window["properties"]["show"]:
@@ -413,7 +416,8 @@ class GUISupervisor(QtImport.QWidget):
                                         + "in receiver %s" % _receiver
                                     )
                                 else:
-                                    getattr(sender, connection["signal"]).connect(slot)
+                                    if not isinstance(sender, NullBrick):
+                                        getattr(sender, connection["signal"]).connect(slot)
                                     # sender.connect(sender,
                                     #    QtCore.SIGNAL(connection["signal"]),
                                     #    slot)
@@ -439,6 +443,8 @@ class GUISupervisor(QtImport.QWidget):
 
         if BaseWidget._menubar:
             BaseWidget._menubar.set_exp_mode(False)
+
+        HWR.beamline.force_emit_signals()
 
         return main_window
 
@@ -500,7 +506,7 @@ class GUISupervisor(QtImport.QWidget):
                     "Timeout while connecting to Hardware "
                     + "Repository server.\nMake sure the Hardware "
                     + "Repository Server is running on host:\n%s."
-                    % str(self.hardware_repository.serverAddress).split(":")[0]
+                    % str(self.hardware_repository.server_address).split(":")[0]
                 )
                 if (
                     QtImport.QMessageBox.warning(
@@ -520,7 +526,7 @@ class GUISupervisor(QtImport.QWidget):
             else:
                 logging.getLogger().info(
                     "Connected to Hardware "
-                    + "Repository server %s" % self.hardware_repository.serverAddress
+                    + "Repository server %s" % self.hardware_repository.server_address
                 )
                 break
 

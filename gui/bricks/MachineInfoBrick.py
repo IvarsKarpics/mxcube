@@ -17,12 +17,11 @@
 #  You should have received a copy of the GNU Lesser General Public License
 #  along with MXCuBE. If not, see <http://www.gnu.org/licenses/>.
 
-
-import api
-
 from gui.BaseComponents import BaseWidget
 from gui.utils import Icons, Colors, QtImport
 from gui.widgets.matplot_widget import TwoAxisPlotWidget
+
+from HardwareRepository import HardwareRepository as HWR
 
 
 STATES = {"unknown": Colors.GRAY, "ready": Colors.LIGHT_BLUE, "error": Colors.LIGHT_RED}
@@ -42,7 +41,7 @@ class MachineInfoBrick(BaseWidget):
         BaseWidget.__init__(self, *args)
 
         # Internal values -----------------------------------------------------
-        self.graphics_initialized = None
+        self.graphics_initialized = False
         self.value_label_list = []
 
         # Properties (name, type, default value, comment)----------------------
@@ -68,10 +67,9 @@ class MachineInfoBrick(BaseWidget):
 
     def run(self):
         """Method called when user changes a property in the gui builder"""
-        if api.machine_info is not None:
+        if HWR.beamline.machine_info is not None:
             self.setEnabled(True)
-            self.connect(api.machine_info, "valuesChanged", self.set_value)
-            api.machine_info.update_values()
+            self.connect(HWR.beamline.machine_info, "valuesChanged", self.set_value)
         else:
             self.setEnabled(False)
 
@@ -80,7 +78,7 @@ class MachineInfoBrick(BaseWidget):
            At first time initializes gui by adding necessary labels.
            If the gui is initialized then update labels with values
         """
-        if self.graphics_initialized is None:
+        if not self.graphics_initialized:
             for item in values_dict.values():
                 temp_widget = CustomInfoWidget(self)
                 temp_widget.init_info(item, self["maxPlotPoints"])

@@ -154,9 +154,8 @@ class BeamlineTestBrick(BaseWidget):
                     self.beamline_test_hwobj, "testFinished", self.test_finished
                 )
                 self.update_focus_status(None, None)
-                self.beamline_test_hwobj.update_values()
         # elif property_name == 'hwobj_unittest':
-        #    self.unittest_hwobj = self.getHardwareObject(new_value)
+        #    self.unittest_hwobj = self.get_hardware_object(new_value)
         else:
             BaseWidget.property_changed(self, property_name, old_value, new_value)
 

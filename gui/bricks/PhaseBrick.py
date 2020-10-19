@@ -15,11 +15,12 @@
 #  GNU Lesser General Public License for more details.
 #
 #  You should have received a copy of the GNU Lesser General Public License
-#  along with MXCuBE.  If not, see <http://www.gnu.org/licenses/>.
+#  along with MXCuBE. If not, see <http://www.gnu.org/licenses/>.
 
-import api
 from gui.BaseComponents import BaseWidget
 from gui.utils import Colors, QtImport
+
+from HardwareRepository import HardwareRepository as HWR
 
 
 __credits__ = ["MXCuBE collaboration"]
@@ -35,6 +36,9 @@ class PhaseBrick(BaseWidget):
         # Internal values -----------------------------------------------------
 
         # Properties ----------------------------------------------------------
+        self.add_property("confirmPhaseChange", "boolean", False)
+
+        # Properties to initialize hardware objects --------------------------
 
         # Signals ------------------------------------------------------------
 
@@ -68,12 +72,13 @@ class PhaseBrick(BaseWidget):
 
         self.init_phase_list()
 
-        self.connect(api.diffractometer, "minidiffPhaseChanged", self.phase_changed)
-        api.diffractometer.update_values()
+        self.connect(
+            HWR.beamline.diffractometer, "minidiffPhaseChanged", self.phase_changed
+        )
 
     def init_phase_list(self):
         self.phase_combobox.clear()
-        phase_list = api.diffractometer.get_phase_list()
+        phase_list = HWR.beamline.diffractometer.get_phase_list()
         if len(phase_list) > 0:
             for phase in phase_list:
                 self.phase_combobox.addItem(phase)
@@ -82,10 +87,24 @@ class PhaseBrick(BaseWidget):
             self.setEnabled(False)
 
     def change_phase(self):
-        if api.diffractometer is not None:
-            api.diffractometer.set_phase(
-                self.phase_combobox.currentText(), timeout=None
-            )
+        if HWR.beamline.diffractometer is not None:
+            requested_phase = self.phase_combobox.currentText()
+            if self["confirmPhaseChange"] and requested_phase == "BeamLocation":
+                conf_msg = "Please remove any objects that might cause collision!\n" + \
+                           "Continue"
+                if (
+                    QtImport.QMessageBox.warning(
+                        None,
+                        "Warning",
+                        conf_msg,
+                        QtImport.QMessageBox.Ok,
+                        QtImport.QMessageBox.Cancel,
+                   )
+                   == QtImport.QMessageBox.Ok
+                ):
+                   HWR.beamline.diffractometer.set_phase(requested_phase, timeout=None)
+            else:
+                HWR.beamline.diffractometer.set_phase(requested_phase, timeout=None)
 
     def phase_changed(self, phase):
         if phase.lower() != "unknown" and self.phase_combobox.count() > 0:

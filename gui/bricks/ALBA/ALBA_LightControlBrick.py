@@ -118,12 +118,12 @@ class ALBA_LightControlBrick(BaseWidget):
                 self.connect(
                     self.light_ho, QtImport.SIGNAL("stateChanged"), self.state_changed
                 )
-                self.light_ho.update_values()
+                self.light_ho.re_emit_values()
                 self.setToolTip(
                     "Control of %s (light level and on/off switch."
                     % self.light_ho.getUserName()
                 )
-                self.set_level_limits(self.light_ho.getLimits())
+                self.set_level_limits(self.light_ho.get_limits())
                 self.set_label(self.light_ho.getUserName())
             else:
                 self.setEnabled(False)

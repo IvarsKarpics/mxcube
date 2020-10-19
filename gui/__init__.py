@@ -48,6 +48,10 @@ _logger = logging.getLogger()
 _logger.setLevel(logging.DEBUG)
 _formatter = logging.Formatter('%(asctime)s |%(name)-5s|%(levelname)-7s| %(message)s')
 
+
+mpl_logger = logging.getLogger("matplotlib")
+mpl_logger.setLevel(logging.WARNING)
+
 #
 # log to stdout
 #
@@ -69,7 +73,6 @@ logging.getLogger().addHandler(_hdlr)
 #
 gui_path = os.path.dirname(__file__)
 sys.path.insert(0, gui_path)
-
 
 def get_base_bricks_path():
     std_bricks_pkg = __import__(STD_BRICKS_LOCATION, globals(), locals(), [""])
@@ -96,7 +99,12 @@ def add_custom_bricks_dirs(bricks_dirs):
         _bricks_dirs += new_bricks_dirs
 
 
+base_bricks_path = get_base_bricks_path()
 sys.path.insert(0, get_base_bricks_path())
+# add 'EMBL' 'ESRF' 'ALBA' ... subfolders to path
+for root, dirs, files in os.walk(base_bricks_path):
+    if root[root.rfind("/"):] != "/__pycache__" and root != base_bricks_path:
+        sys.path.insert(0, root)
 
 
 def get_custom_bricks_dirs():

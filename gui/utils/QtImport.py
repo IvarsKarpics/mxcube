@@ -136,9 +136,11 @@ if (qt_variant == "PyQt5") or (qt_variant is None and not qt_imported):
         from PyQt5.QtWidgets import (
             QAbstractItemView,
             QAction,
+            QActionGroup,
             QApplication,
             QButtonGroup,
             QCheckBox,
+            QColorDialog,
             QComboBox,
             QDesktopWidget,
             QDial,
@@ -261,6 +263,7 @@ if (qt_variant == "PyQt4") or (qt_variant is None and not qt_imported):
             QDir,
             QEvent,
             QEventLoop,
+            QUrl,
             QObject,
             QPoint,
             QPointF,
@@ -277,17 +280,20 @@ if (qt_variant == "PyQt4") or (qt_variant is None and not qt_imported):
             qApp,
             QAbstractItemView,
             QAction,
+            QActionGroup,
             QApplication,
             QBrush,
             QButtonGroup,
             QCheckBox,
             QColor,
+            QColorDialog,
             QContextMenuEvent,
             QComboBox,
             QCursor,
             QDesktopWidget,
             QDial,
             QDialog,
+            QInputDialog,
             QDoubleSpinBox,
             QDoubleValidator,
             QFileDialog,
@@ -532,14 +538,14 @@ if qt_variant in ("PyQt4", "PyQt5", "PySide"):
                 raise ValueError("Minimum limit cannot be higher than maximum")
 
             self._min_value = value
-            self.setValue(self.value())
+            #self.setValue(self.value())
 
         def setMaximum(self, value):
             if value < self._min_value:
                 raise ValueError("Minimum limit cannot be higher than maximum")
 
             self._max_value = value
-            self.setValue(self.value())
+            #self.setValue(self.value())
 
         def minimum(self):
             return self._min_value

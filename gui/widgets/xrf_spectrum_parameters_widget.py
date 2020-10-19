@@ -17,13 +17,14 @@
 #  You should have received a copy of the GNU Lesser General Public License
 #  along with MXCuBE.  If not, see <http://www.gnu.org/licenses/>.
 
-import api
 from gui.utils import QtImport
 from gui.widgets.data_path_widget import DataPathWidget
 from gui.widgets.mca_spectrum_widget import McaSpectrumWidget
 from gui.widgets.snapshot_widget import SnapshotWidget
 
 from HardwareRepository.HardwareObjects import queue_model_objects
+
+from HardwareRepository import HardwareRepository as HWR
 
 
 __credits__ = ["MXCuBE collaboration"]
@@ -112,8 +113,8 @@ class XRFSpectrumParametersWidget(QtImport.QWidget):
         # Other ---------------------------------------------------------------
         self.data_path_widget.data_path_layout.compression_cbox.setVisible(False)
 
-        if api.xrf_spectrum is None:
-            api.xrf_spectrum.connect(
+        if HWR.beamline.xrf_spectrum is None:
+            HWR.beamline.xrf_spectrum.connect(
                 "xrfSpectrumFinished", self.spectrum_finished
             )
 
@@ -129,10 +130,6 @@ class XRFSpectrumParametersWidget(QtImport.QWidget):
     def _count_time_ledit_change(self, new_value):
         if str(new_value).isdigit():
             self.xrf_spectrum_model.set_count_time(float(new_value))
-
-    def tab_changed(self):
-        if self._tree_view_item:
-            self.populate_widget(self._tree_view_item)
 
     def populate_widget(self, item):
         self._tree_view_item = item

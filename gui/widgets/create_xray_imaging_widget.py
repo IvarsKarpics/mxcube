@@ -19,7 +19,6 @@
 
 import copy
 
-import api
 from gui.utils import queue_item, QtImport
 from gui.widgets.create_task_base import CreateTaskBase
 from gui.widgets.data_path_widget import DataPathWidget
@@ -28,6 +27,8 @@ from gui.widgets.xray_imaging_parameters_widget import XrayImagingParametersWidg
 
 from HardwareRepository.HardwareObjects.QtGraphicsLib import GraphicsItemPoint
 from HardwareRepository.HardwareObjects import queue_model_objects
+
+from HardwareRepository import HardwareRepository as HWR
 
 
 __credits__ = ["MXCuBE collaboration"]
@@ -117,8 +118,8 @@ class CreateXrayImagingWidget(CreateTaskBase):
 
         self.distance_listwidget = self._xray_imaging_parameters_widget._parameters_widget.detector_distance_listwidget
 
-        api.detector_distance.connect(
-            "positionChanged",
+        HWR.beamline.detector.distance.connect(
+            "valueChanged",
             self._xray_imaging_parameters_widget.set_detector_distance,
         )
 
@@ -132,8 +133,8 @@ class CreateXrayImagingWidget(CreateTaskBase):
         CreateTaskBase.init_models(self)
 
         self._xray_imaging_parameters = queue_model_objects.XrayImagingParameters()
-        self._acquisition_parameters = api.beamline_setup.get_default_acquisition_parameters(
-            "default_imaging_values"
+        self._acquisition_parameters = (
+            HWR.beamline.get_default_acquisition_parameters("imaging")
         )
         self._path_template.suffix = "tiff"
 
@@ -147,7 +148,7 @@ class CreateXrayImagingWidget(CreateTaskBase):
                 self._xray_imaging_parameters
             )
             self._xray_imaging_parameters_widget.set_detector_distance(
-                api.detector_distance.get_position()
+                HWR.beamline.detector.distance.get_value()
             )
             self.setDisabled(False)
             self._xray_imaging_parameters_widget.enable_distance_tools(True)
@@ -177,41 +178,41 @@ class CreateXrayImagingWidget(CreateTaskBase):
 
     # Called by the owning widget (task_toolbox_widget) to create
     # a collection. When a data collection group is selected.
-    def _create_task(self, sample, shape):
+    def _create_task(self, sample, shape, comments=None):
         if isinstance(shape, GraphicsItemPoint):
-            snapshot = api.graphics.get_scene_snapshot(shape)
+            snapshot = HWR.beamline.sample_view.get_scene_snapshot(shape)
             cpos = copy.deepcopy(shape.get_centred_position())
             cpos.snapshot_image = snapshot
         else:
             cpos = queue_model_objects.CentredPosition()
-            cpos.snapshot_image = api.graphics.get_scene_snapshot()
+            cpos.snapshot_image = HWR.beamline.sample_view.get_snapshot()
  
         detector_distance_list = []
         dc_list = []
 
         if self.distance_listwidget.count() > 1:
             for index in range(self.distance_listwidget.count()):
-                detector_distance_list.append(int(self.distance_listwidget.item(index).text()))
+                detector_distance_list.append(float(self.distance_listwidget.item(index).text()))
         else:
-            detector_distance_list.append(None)
+            #TODO do not read distance again
+            detector_distance_list.append(self._xray_imaging_parameters.detector_distance)
 
         do_it = True
 
         for detector_distance in detector_distance_list:
             xray_imaging_parameters = copy.deepcopy(self._xray_imaging_parameters)
-            if detector_distance:
-                xray_imaging_parameters.detector_distance = detector_distance
+            xray_imaging_parameters.detector_distance = detector_distance
 
             acq = self._create_acq(sample)
             acq.acquisition_parameters.centred_position = cpos
-            acq.path_template.base_prefix = self.get_default_prefix(sample)
+            #acq.path_template.base_prefix = self.get_default_prefix(sample)
 
             if do_it:
                 do_it = False
-                self._path_template.run_number = \
-                    api.queue_model.get_next_run_number(
+                acq.path_template.run_number = \
+                    HWR.beamline.queue_model.get_next_run_number(
                     acq.path_template)
-                acq.path_template.run_number = self._path_template.run_number
+                acq.path_template.run_number = self._path_template.run_number 
 
             dc = queue_model_objects.XrayImaging(
                 xray_imaging_parameters, acq, sample.crystals[0]
@@ -220,6 +221,5 @@ class CreateXrayImagingWidget(CreateTaskBase):
             dc.set_number(acq.path_template.run_number)
 
             dc_list.append(dc)
-
             self._path_template.run_number += 1
         return dc_list

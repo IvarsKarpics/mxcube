@@ -46,15 +46,17 @@ Sizes are estimated by related HO
 -----------------------------------------------------------------------
 """
 
-try:
-    uni_chr = unichr
-except BaseException:
-    uni_chr = chr
 
-import api
+
 from gui.utils import QtImport
 from gui.BaseComponents import BaseWidget
 
+from HardwareRepository import HardwareRepository as HWR
+
+try:
+    unichr
+except NameError:
+    unichr = chr
 
 __credits__ = ["MXCuBE collaboration"]
 __category__ = "Beam definition"
@@ -65,7 +67,6 @@ class BeamSizeBrick(BaseWidget):
         BaseWidget.__init__(self, *args)
 
         # Hardware objects ----------------------------------------------------
-        self.beam_info_hwobj = None
 
         # Internal values -----------------------------------------------------
 
@@ -116,7 +117,7 @@ class BeamSizeBrick(BaseWidget):
 
         # Other ---------------------------------------------------------------
 
-        self.connect(api.beam_info, "beamInfoChanged", self.beam_info_changed)
+        self.connect(HWR.beamline.beam, "beamInfoChanged", self.beam_info_changed)
 
     def beam_info_changed(self, beam_info):
         """
@@ -129,10 +130,10 @@ class BeamSizeBrick(BaseWidget):
             self.hor_size_ledit.setText("")
         else:
             size_str = self["formatString"] % (hor_size * 1000)
-            self.hor_size_ledit.setText("%s %sm" % (size_str, uni_chr(956)))
+            self.hor_size_ledit.setText("%s %sm" % (size_str, unichr(956)))
         if ver_size is None:
             self.ver_size_ledit.setText("")
         else:
             # ver_size *= 1000
             size_str = self["formatString"] % (ver_size * 1000)
-            self.ver_size_ledit.setText("%s %sm" % (size_str, uni_chr(956)))
+            self.ver_size_ledit.setText("%s %sm" % (size_str, unichr(956)))

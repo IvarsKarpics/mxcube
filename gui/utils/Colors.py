@@ -17,10 +17,9 @@
 #  You should have received a copy of the GNU Lesser General Public License
 #  along with MXCuBE.  If not, see <http://www.gnu.org/licenses/>.
 
-from gui.utils.QtImport import Qt, QColor, QPalette
-
 from random import randint, uniform
-
+from gui.utils.QtImport import Qt, QColor, QPalette
+from HardwareRepository.BaseHardwareObjects import HardwareObjectState
 
 __credits__ = ["MXCuBE collaboration"]
 __license__ = "LGPLv3+"
@@ -29,6 +28,7 @@ __license__ = "LGPLv3+"
 # Basic core colors
 BLUE = QColor(Qt.blue)
 WHITE = QColor(Qt.white)
+BLACK = QColor(Qt.black)
 GRAY = QColor(Qt.gray)
 LIGHT_GRAY = QColor(Qt.lightGray)
 DARK_BLUE = QColor(Qt.darkBlue)
@@ -36,6 +36,7 @@ DARK_GRAY = QColor(Qt.darkGray)
 GREEN = QColor(Qt.green)
 DARK_GREEN = QColor(Qt.darkGreen)
 RED = QColor(Qt.red)
+YELLOW = QColor(Qt.yellow)
 
 LIGHT_GREEN = QColor(204, 255, 204)
 LIGHT_RED = QColor(255, 204, 204)
@@ -60,6 +61,17 @@ TREE_ITEM_COLLECTION = QColor(255, 230, 210)
 
 TASK_GROUP = [QColor("#B0DBFF"), QColor("#E57935"), QColor("#B1FF52")]
 
+COLOR_STATES = {
+    HardwareObjectState.UNKNOWN: DARK_GRAY,
+    HardwareObjectState.WARNING: LIGHT_ORANGE,
+    HardwareObjectState.READY: LIGHT_GREEN,
+    HardwareObjectState.BUSY: LIGHT_YELLOW,
+    HardwareObjectState.FAULT: LIGHT_RED,
+    HardwareObjectState.OFF: LIGHT_GRAY,
+}
+
+def get_state_color(state):
+    return COLOR_STATES.get(state, LIGHT_GRAY)
 
 def set_widget_color(widget, color, color_role=None):
     if color_role is None:

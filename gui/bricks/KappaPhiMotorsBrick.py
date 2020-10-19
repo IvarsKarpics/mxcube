@@ -20,6 +20,7 @@
 
 from gui.utils import Icons, Colors, QtImport
 from gui.BaseComponents import BaseWidget
+from HardwareRepository import HardwareRepository as HWR
 
 
 __credits__ = ["MXCuBE collaboration"]
@@ -42,12 +43,10 @@ class KappaPhiMotorsBrick(BaseWidget):
         BaseWidget.__init__(self, *args)
 
         # Hardware objects ----------------------------------------------------
-        self.diffractometer_hwobj = None
 
         # Internal values -----------------------------------------------------
 
         # Properties ----------------------------------------------------------
-        self.add_property("mnemonic", "string", "")
         self.add_property("label", "string", "")
         self.add_property("showStop", "boolean", True)
         self.add_property("defaultStep", "string", "10.0")
@@ -125,41 +124,12 @@ class KappaPhiMotorsBrick(BaseWidget):
         self.stop_button.setEnabled(False)
         self.stop_button.setFixedSize(27, 27)
 
+        self.connect(HWR.beamline.diffractometer, "kappaMotorMoved", self.kappa_motor_moved)
+        self.connect(HWR.beamline.diffractometer, "kappaPhiMotorMoved", self.kappaphi_motor_moved)
+        self.connect(HWR.beamline.diffractometer, "minidiffStatusChanged", self.diffractometer_state_changed)
+
     def property_changed(self, property_name, old_value, new_value):
-        if property_name == "mnemonic":
-            if self.diffractometer_hwobj is not None:
-                self.disconnect(
-                    self.diffractometer_hwobj, "kappaMotorMoved", self.kappa_motor_moved
-                )
-                self.disconnect(
-                    self.diffractometer_hwobj,
-                    "kappaPhiMotorMoved",
-                    self.kappaphi_motor_moved,
-                )
-                self.disconnect(
-                    self.diffractometer_hwobj,
-                    "minidiffStatusChanged",
-                    self.diffractometer_state_changed,
-                )
-            self.diffractometer_hwobj = self.get_hardware_object(new_value)
-            if self.diffractometer_hwobj is not None:
-                self.connect(
-                    self.diffractometer_hwobj, "kappaMotorMoved", self.kappa_motor_moved
-                )
-                self.connect(
-                    self.diffractometer_hwobj,
-                    "kappaPhiMotorMoved",
-                    self.kappaphi_motor_moved,
-                )
-                self.connect(
-                    self.diffractometer_hwobj,
-                    "minidiffStatusChanged",
-                    self.diffractometer_state_changed,
-                )
-                self.diffractometer_state_changed("Ready")
-            else:
-                self.setEnabled(False)
-        elif property_name == "showStop":
+        if property_name == "showStop":
             if new_value:
                 self.stop_button.show()
             else:
@@ -172,13 +142,13 @@ class KappaPhiMotorsBrick(BaseWidget):
             BaseWidget.property_changed(self, property_name, old_value, new_value)
 
     def stop_clicked(self):
-        self.diffractometer_hwobj.stop_kappa_phi_move()
+        HWR.beamline.diffractometer.stop_kappa_phi_move()
 
     def close_clicked(self):
-        self.diffractometer_hwobj.close_kappa()
+        HWR.beamline.diffractometer.close_kappa()
 
     def change_position(self):
-        self.diffractometer_hwobj.move_kappa_and_phi(
+        HWR.beamline.diffractometer.move_kappa_and_phi(
             self.kappa_dspinbox.value(), self.kappaphi_dspinbox.value()
         )
 
@@ -197,7 +167,7 @@ class KappaPhiMotorsBrick(BaseWidget):
         )
 
     def kappa_value_accepted(self):
-        self.diffractometer_hwobj.move_kappa_and_phi(
+        HWR.beamline.diffractometer.move_kappa_and_phi(
             self.kappa_dspinbox.value(), self.kappaphi_dspinbox.value()
         )
 
@@ -216,7 +186,7 @@ class KappaPhiMotorsBrick(BaseWidget):
         self.kappaphi_dspinbox.blockSignals(False)
 
     def diffractometer_state_changed(self, state):
-        if self.diffractometer_hwobj.in_plate_mode():
+        if HWR.beamline.diffractometer.in_plate_mode():
             self.setDisabled(True)
             return
 

@@ -31,29 +31,6 @@ __category__ = "Motor"
 
 
 class MotorSpinBoxBrick(BaseWidget):
-    """STATE COLORS are based on the motor states:
-
-    """
-
-    STATE_COLORS = (
-        Colors.LIGHT_YELLOW,  # INITIALIZING
-        Colors.LIGHT_GREEN,  # ON
-        Colors.DARK_GRAY,  # OFF
-        Colors.LIGHT_GREEN,  # READY
-        Colors.LIGHT_YELLOW,  # MOVING
-        Colors.LIGHT_YELLOW,  # BUSY
-        Colors.LIGHT_YELLOW,  # MOVING
-        Colors.LIGHT_GREEN,  # STANDBY
-        Colors.DARK_GRAY,  # DISABLED
-        Colors.DARK_GRAY,  # UNKNOWN
-        Colors.LIGHT_RED,  # ALARM
-        Colors.LIGHT_RED,  # FAULT
-        Colors.LIGHT_RED,  # INVALID
-        Colors.DARK_GRAY,  # OFFLINE
-        Colors.LIGHT_RED,  # LOWLIMIT
-        Colors.LIGHT_RED,  # HIGHLIMIT
-        Colors.DARK_GRAY,
-    )  # NOTINITIALIZED
 
     MAX_HISTORY = 20
 
@@ -70,6 +47,9 @@ class MotorSpinBoxBrick(BaseWidget):
         self.demand_move = 0
         self.in_expert_mode = None
         self.position_history = []
+        self.editing = False
+        self.units = None
+        self.show_units = None
 
         # Properties ----------------------------------------------------------
         self.add_property("mnemonic", "string", "")
@@ -83,6 +63,7 @@ class MotorSpinBoxBrick(BaseWidget):
         self.add_property("showStepList", "boolean", False)
         self.add_property("showPosition", "boolean", True)
         self.add_property("invertButtons", "boolean", False)
+        self.add_property("oneClickPressButton", "boolean", False)
         self.add_property("delta", "string", "")
         self.add_property("decimals", "integer", 2)
         self.add_property("icons", "string", "")
@@ -91,6 +72,8 @@ class MotorSpinBoxBrick(BaseWidget):
         self.add_property("hideInUser", "boolean", False)
         self.add_property("defaultSteps", "string", "180 90 45 30 10")
         self.add_property("enableSliderTracking", "boolean", False)
+        self.add_property("show_units", "boolean", False)
+        self.add_property("unit", "string", "mm")
 
         # Signals ------------------------------------------------------------
 
@@ -107,11 +90,14 @@ class MotorSpinBoxBrick(BaseWidget):
         self.move_left_button.setIcon(Icons.load_icon("Left2"))
         self.move_left_button.setToolTip("Moves the motor down (while pressed)")
         self.move_left_button.setFixedSize(27, 27)
+        self.move_left_button.setAutoRepeatDelay(500)
+        self.move_left_button.setAutoRepeatInterval(500)
         self.move_right_button = QtImport.QPushButton(self.main_gbox)
         self.move_right_button.setIcon(Icons.load_icon("Right2"))
         self.move_right_button.setToolTip("Moves the motor up (while pressed)")
         self.move_right_button.setFixedSize(27, 27)
-
+        self.move_right_button.setAutoRepeatDelay(500)
+        self.move_right_button.setAutoRepeatInterval(500)
         self.position_spinbox = QtImport.QDoubleSpinBox(self.main_gbox)
         self.position_spinbox.setMinimum(-10000)
         self.position_spinbox.setMaximum(10000)
@@ -121,6 +107,7 @@ class MotorSpinBoxBrick(BaseWidget):
             "Moves the motor to a specific "
             + "position or step by step; right-click for motor history"
         )
+        self.position_spinbox.setContextMenuPolicy(QtImport.Qt.CustomContextMenu)
 
         # Extra controls
         self.stop_button = QtImport.QPushButton(self.main_gbox)
@@ -175,7 +162,7 @@ class MotorSpinBoxBrick(BaseWidget):
         spinbox_event.returnPressedSignal.connect(self.change_position)
         spinbox_event.contextMenuSignal.connect(self.open_history_menu)
         self.position_spinbox.lineEdit().textEdited.connect(self.position_value_edited)
-
+        
         self.step_combo.activated.connect(self.go_to_step)
         self.step_combo.activated.connect(self.step_changed)
         self.step_combo.editTextChanged.connect(self.step_edited)
@@ -264,9 +251,10 @@ class MotorSpinBoxBrick(BaseWidget):
 
     def move_up(self):
         # self.demand_move = 1
+        self.set_editing(False)   
         self.update_gui()
         state = self.motor_hwobj.get_state()
-        if state == self.motor_hwobj.motor_states.READY:
+        if state == self.motor_hwobj.STATES.READY:
             if self["invertButtons"]:
                 self.really_move_down()
             else:
@@ -274,9 +262,10 @@ class MotorSpinBoxBrick(BaseWidget):
 
     def move_down(self):
         # self.demand_move = -1
+        self.set_editing(False)   
         self.update_gui()
         state = self.motor_hwobj.get_state()
-        if state == self.motor_hwobj.motor_states.READY:
+        if state == self.motor_hwobj.STATES.READY:
             if self["invertButtons"]:
                 self.really_move_up()
             else:
@@ -293,8 +282,8 @@ class MotorSpinBoxBrick(BaseWidget):
             step = float(self["delta"])
 
         if self.motor_hwobj.is_ready():
-            self.set_position_spinbox_color(self.motor_hwobj.motor_states.READY)
-            self.motor_hwobj.move_relative(step)
+            self.set_position_spinbox_color(self.motor_hwobj.STATES.READY)
+            self.motor_hwobj.set_value_relative(step)
 
     def really_move_down(self):
         step = 1.0
@@ -309,26 +298,24 @@ class MotorSpinBoxBrick(BaseWidget):
             step = float(self["delta"])
 
         if self.motor_hwobj.is_ready() and step:
-            self.set_position_spinbox_color(self.motor_hwobj.motor_states.READY)
-            self.motor_hwobj.move_relative(-step)
+            self.set_position_spinbox_color(self.motor_hwobj.STATES.READY)
+            self.motor_hwobj.set_value_relative(-step)
 
     def update_gui(self):
         if self.motor_hwobj is not None:
             self.main_gbox.setEnabled(True)
             if self.motor_hwobj.is_ready():
-                self.motor_hwobj.update_values()
+                self.motor_hwobj.force_emit_signals()
         else:
             self.main_gbox.setEnabled(False)
 
     def limits_changed(self, limits):
-        # limits = self.make_limits_bounded(limits)
-
-        if limits and not None in limits:
+        if limits and not(None in limits or any(math.isnan(x) for x in limits)):
+            #limits = self.make_limits_bounded(limits) 
             self.position_spinbox.blockSignals(True)
             self.position_spinbox.setMinimum(limits[0])
             self.position_spinbox.setMaximum(limits[1])
             self.position_spinbox.blockSignals(False)
-
             self.position_slider.blockSignals(True)
             self.position_slider.setMinimum(limits[0])
             self.position_slider.setMaximum(limits[1])
@@ -353,7 +340,8 @@ class MotorSpinBoxBrick(BaseWidget):
         menu.popup(QtImport.QCursor.pos())
 
     def go_to_history_pos(self):
-        self.motor_hwobj.move(float(self.sender))
+        self.set_editing(False)   
+        self.motor_hwobj.set_value(float(self.sender().text()))
 
     def update_history(self, pos):
         pos = str(pos)
@@ -363,7 +351,7 @@ class MotorSpinBoxBrick(BaseWidget):
             self.position_history.insert(0, pos)
 
     def open_step_editor(self):
-        if self.isRunning():
+        if self.is_running():
             if self.step_editor is None:
                 self.step_editor = StepEditorDialog(self)
             self.step_editor.set_motor(
@@ -376,31 +364,31 @@ class MotorSpinBoxBrick(BaseWidget):
             self.step_editor.updateGeometry()
             self.step_editor.show()
 
-    def position_changed(self, new_position):
-        try:
+    def position_changed(self, position):
+        if not(position is None or math.isinf(position) or math.isnan(position)):
             self.position_spinbox.blockSignals(True)
             self.position_slider.blockSignals(True)
-            self.position_spinbox.setValue(float(new_position))
-            self.position_slider.setValue(float(new_position))
+            self.position_spinbox.setValue(position)
+            self.position_slider.setValue(position)
             self.position_spinbox.blockSignals(False)
             self.position_slider.blockSignals(False)
-        except BaseException:
-            logging.getLogger("user_level_log").debug(
-                "Unable to set motor position: %s" % str(new_position)
+        else:
+            logging.getLogger("GUI").debug(
+                "Unable to set motor position: %s" % str(position)
             )
 
     def set_position_spinbox_color(self, state):
         """Changes color of the spinbox based on the state"""
-        color = MotorSpinBoxBrick.STATE_COLORS[state]
         Colors.set_widget_color(
-            self.position_spinbox.lineEdit(), color, QtImport.QPalette.Base
+            self.position_spinbox.lineEdit(), Colors.get_state_color(state), QtImport.QPalette.Base
         )
 
     def state_changed(self, state):
         """Enables/disables controls based on the state
         """
         self.set_position_spinbox_color(state)
-        if state == self.motor_hwobj.motor_states.READY:
+
+        if self.motor_hwobj.is_ready():
             if self.demand_move == 1:
                 if self["invertButtons"]:
                     self.really_move_down()
@@ -419,21 +407,24 @@ class MotorSpinBoxBrick(BaseWidget):
             self.move_left_button.setEnabled(True)
             self.move_right_button.setEnabled(True)
             self.step_combo.setEnabled(True)
-        elif state == self.motor_hwobj.motor_states.NOTINITIALIZED:
+        elif state == self.motor_hwobj.STATES.FAULT:
             self.position_spinbox.setEnabled(False)
             self.stop_button.setEnabled(False)
             self.move_left_button.setEnabled(False)
             self.move_right_button.setEnabled(False)
-        elif state == self.motor_hwobj.motor_states.MOVING:
-            # self.update_history(self.motor_hwobj.getPosition())
+            self.set_editing(False)
+        elif state == self.motor_hwobj.STATES.BUSY:
+            # self.update_history(self.motor_hwobj.get_value())
             self.position_spinbox.setEnabled(False)
             self.stop_button.setEnabled(True)
             self.move_left_button.setEnabled(False)
             self.move_right_button.setEnabled(False)
             self.step_combo.setEnabled(False)
+            self.set_editing(False)
         elif state in (
-            self.motor_hwobj.motor_states.LOWLIMIT,
-            self.motor_hwobj.motor_states.HIGHLIMIT,
+            #self.motor_hwobj.STATES.LOWLIMIT,
+            #self.motor_hwobj.STATES.HIGHLIMIT,
+            self.motor_hwobj.STATES.READY,
         ):
             self.position_spinbox.setEnabled(True)
             self.stop_button.setEnabled(False)
@@ -442,16 +433,29 @@ class MotorSpinBoxBrick(BaseWidget):
         self.set_tool_tip(state=state)
 
     def change_position(self):
+        target = self.position_spinbox.value()
         if self.motor_hwobj is not None:
-            self.motor_hwobj.move(self.position_spinbox.value())
+            self.motor_hwobj.set_value(target)
+        self.set_editing(False)
         self.update_history(self.position_spinbox.value())
 
     def position_value_edited(self, value):
-        Colors.set_widget_color(
-            self.position_spinbox.lineEdit(),
-            QtImport.QColor(255, 165, 0),
-            QtImport.QPalette.Base,
-        )
+        self.set_editing(True)
+        self.editing = True
+
+    def set_editing(self, editing):
+
+        self.editing = editing
+
+        if self.editing:
+            Colors.set_widget_color(
+                self.position_spinbox.lineEdit(),
+                QtImport.QColor(255, 165, 0),
+                QtImport.QPalette.Base,
+            )
+        else:
+            # restore last position from motor
+            self.position_changed(self.motor_hwobj.get_value())
 
     def set_tool_tip(self, name=None, state=None, limits=None):
         states = (
@@ -479,7 +483,7 @@ class MotorSpinBoxBrick(BaseWidget):
                     "%s: could not get motor state", self.objectName()
                 )
 
-                state = self.motor_hwobj.motor_states.INVALID
+                state = self.motor_hwobj.STATES.FAULT
 
             try:
                 if limits is None and self.motor_hwobj.is_ready():
@@ -490,7 +494,7 @@ class MotorSpinBoxBrick(BaseWidget):
                 )
                 limits = None
             try:
-                state_str = states[state]
+                state_str = state.name
             except IndexError:
                 state_str = "UNKNOWN"
 
@@ -506,6 +510,29 @@ class MotorSpinBoxBrick(BaseWidget):
             tip = ""
         self.main_gbox.setToolTip(tip)
 
+    def set_show_units(self,value):
+        self.show_units = value
+        if self.units is not None and self.show_units:
+            self._show_units()
+        
+    def set_units(self, unit):
+        self.units = unit
+        if self.show_units:
+            self._show_units()
+
+    def _show_units(self):
+        unit = self.units
+        self.position_spinbox.setFixedSize(110, 27)
+
+        if unit == "deg":
+           self.position_spinbox.setSuffix("°")
+        elif unit == "mm":
+           self.position_spinbox.setSuffix(" mm")
+        elif unit == "micron":
+           self.position_spinbox.setSuffix(" µm")
+        else:
+           self.position_spinbox.setSuffix("")
+            
     def set_label(self, label):
         if not self["showLabel"]:
             label = None
@@ -532,12 +559,12 @@ class MotorSpinBoxBrick(BaseWidget):
     def set_motor(self, motor, motor_ho_name=None):
         if self.motor_hwobj is not None:
             self.disconnect(self.motor_hwobj, "limitsChanged", self.limits_changed)
-            self.disconnect(self.motor_hwobj, "positionChanged", self.position_changed)
+            self.disconnect(self.motor_hwobj, "valueChanged", self.position_changed)
             self.disconnect(self.motor_hwobj, "stateChanged", self.state_changed)
 
         if motor_ho_name is not None:
             self.motor_hwobj = self.get_hardware_object(motor_ho_name)
-
+            
         if self.motor_hwobj is None:
             # first time motor is set
             try:
@@ -553,7 +580,7 @@ class MotorSpinBoxBrick(BaseWidget):
             self.connect(self.motor_hwobj, "limitsChanged", self.limits_changed)
             self.connect(
                 self.motor_hwobj,
-                "positionChanged",
+                "valueChanged",
                 self.position_changed,
                 instance_filter=True,
             )
@@ -564,6 +591,8 @@ class MotorSpinBoxBrick(BaseWidget):
                 instance_filter=True,
             )
 
+        # get motor position and set to brick
+        self.position_changed(self.motor_hwobj.get_value())
         self.position_history = []
         self.update_gui()
         # self['label'] = self['label']
@@ -571,8 +600,20 @@ class MotorSpinBoxBrick(BaseWidget):
 
     def position_slider_double_value_changed(self, value):
         """Sets motor postion based on the slider value"""
+        self.set_editing(False)   
         if self.motor_hwobj is not None:
-            self.motor_hwobj.move(value)
+            self.motor_hwobj.set_value(value)
+
+    def set_buttons_press_nature(self, new_state):
+        """Changes right/left buttons functionality
+        if new_state : buttons act while mouse button is pressed
+        if not : buttons stop acting even if mouse button is pressed
+        Args:
+            new_state (bool):
+        """
+
+        self.move_left_button.setAutoRepeat(new_state)
+        self.move_right_button.setAutoRepeat(new_state)
 
     def property_changed(self, property_name, old_value, new_value):
         if property_name == "mnemonic":
@@ -645,6 +686,12 @@ class MotorSpinBoxBrick(BaseWidget):
             self.position_slider.setVisible(new_value)
         elif property_name == "enableSliderTracking":
             self.position_slider.setTracking(new_value)
+        elif property_name == "show_units":
+            self.set_show_units(new_value)
+        elif property_name == "unit":
+            self.set_units(new_value)
+        elif property_name == "oneClickPressButton":
+            self.set_buttons_press_nature(new_value)
         else:
             BaseWidget.property_changed(self, property_name, old_value, new_value)
 
@@ -707,7 +754,7 @@ class StepEditorDialog(QtImport.QDialog):
         self.brick = brick
 
         if name is None or name == "":
-            name = motor.userName()
+            name = motor.username
         self.setWindowTitle(name)
         self.setWindowTitle("%s step editor" % name)
         self.current_step.setText(str(brick.get_line_step()))

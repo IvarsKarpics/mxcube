@@ -108,7 +108,7 @@ class ALBA_ActuatorBrick(BaseWidget):
                     QtImport.SIGNAL("stateChanged"),
                     self.state_changed,
                 )
-                self.actuator_hwo.update_values()
+                self.actuator_hwo.force_emit_signals()
                 logging.getLogger("HWR").info(
                     "User Name is: %s" % self.actuator_hwo.getUserName()
                 )
@@ -125,7 +125,7 @@ class ALBA_ActuatorBrick(BaseWidget):
     def update(self, state=None):
         if self.actuator_hwo is not None:
             if state is None:
-                state = self.actuator_hwo.getState()
+                state = self.actuator_hwo.get_state()
                 status = self.actuator_hwo.getStatus()
                 self.widget.stateLabel.setText(status)
                 Colors.set_widget_color(self.widget.stateLabel, STATES[state])

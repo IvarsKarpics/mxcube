@@ -19,12 +19,13 @@
 
 import logging
 
-import api
 from gui.utils import QtImport
 from gui.widgets.data_path_widget import DataPathWidget
 from gui.widgets.acquisition_widget import AcquisitionWidget
 from gui.widgets.processing_widget import ProcessingWidget
 from gui.utils.widget_utils import DataModelInputBinder
+
+from HardwareRepository import HardwareRepository as HWR
 
 
 __credits__ = ["MXCuBE collaboration"]
@@ -102,7 +103,7 @@ class DCParametersWidget(QtImport.QWidget):
         dc_tree_widget = self._tree_view_item.listView().parent().parent()
         dc_tree_widget.check_for_path_collisions()
         path_template = self._data_collection.acquisitions[0].path_template
-        api.queue_model.check_for_path_collisions(path_template)
+        HWR.beamline.queue_model.check_for_path_collisions(path_template)
 
     def mad_energy_selected(self, name, energy, state):
         path_template = self._data_collection.acquisitions[0].path_template
@@ -112,7 +113,7 @@ class DCParametersWidget(QtImport.QWidget):
         else:
             path_template.mad_prefix = ""
 
-        run_number = api.queue_model.get_next_run_number(
+        run_number = HWR.beamline.queue_model.get_next_run_number(
             path_template
         )
 
@@ -121,10 +122,6 @@ class DCParametersWidget(QtImport.QWidget):
         model = self._tree_view_item.get_model()
         model.set_name(path_template.get_prefix())
         self._tree_view_item.setText(0, model.get_name())
-
-    def tab_changed(self):
-        if self._tree_view_item:
-            self.populate_parameter_widget(self._tree_view_item)
 
     def set_enabled(self, state):
         self._acq_widget.setEnabled(state)

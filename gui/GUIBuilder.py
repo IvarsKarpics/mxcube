@@ -35,7 +35,7 @@ from gui.utils import Icons, ConnectionEditor, PropertyEditor, GUIDisplay, QtImp
 from gui.bricks import LogViewBrick
 from gui.BaseLayoutItems import ContainerCfg
 
-from HardwareRepository import HardwareRepository
+from HardwareRepository import HardwareRepository as HWR
 from HardwareRepository.ConvertUtils import string_types
 
 
@@ -818,7 +818,7 @@ class GUIEditorWindow(QtImport.QWidget):
                     parent = parent_ref()
                     if parent is None:
                         return
-                    parent.childPropertyChanged(
+                    parent.child_property_changed(
                         item_name, property_name, old_value, new_value
                     )
 
@@ -849,10 +849,10 @@ class GUIEditorWindow(QtImport.QWidget):
                         self, "Cannot add item", new_item, QtImport.QMessageBox.Ok
                     )
                 else:
-                    new_item["properties"].getProperty("w").setValue(
+                    new_item["properties"].get_property("w").set_value(
                         QtImport.QApplication.desktop().width()
                     )
-                    new_item["properties"].getProperty("h").setValue(
+                    new_item["properties"].get_property("h").set_value(
                         QtImport.QApplication.desktop().height()
                     )
                     new_list_item = self.append_item(
@@ -1500,7 +1500,7 @@ class GUIBuilder(QtImport.QMainWindow):
                     ):
                         try:
                             hwr_server = (
-                                HardwareRepository.getHardwareRepository().serverAddress
+                                HWR.get_hardware_repository().server_address
                             )
                         except BaseException:
                             hwr_server = ""
@@ -1622,7 +1622,7 @@ class GUIBuilder(QtImport.QMainWindow):
         terminal = os.environ["TERM"] or "xterm"
 
         try:
-            hwr_server = HardwareRepository.getHardwareRepository().serverAddress
+            hwr_server = HWR.getHardwareRepository().server_address
         except BaseException:
             logging.getLogger().error(
                 "Sorry, could not find Hardware Repository server"

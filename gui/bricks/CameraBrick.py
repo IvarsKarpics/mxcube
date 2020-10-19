@@ -17,8 +17,10 @@
 #  You should have received a copy of the GNU Lesser General Public License
 #  along with MXCuBE.  If not, see <http://www.gnu.org/licenses/>.
 
+import logging
 from gui.utils import Icons, QtImport
 from gui.BaseComponents import BaseWidget
+from HardwareRepository import HardwareRepository as HWR
 
 
 __credits__ = ["MXCuBE collaboration"]
@@ -55,7 +57,7 @@ class CameraBrick(BaseWidget):
         # Graphic elements-----------------------------------------------------
         self.info_widget = QtImport.QWidget(self)
         self.display_beam_size_cbox = QtImport.QCheckBox("Display beam size", self)
-        self.display_beam_size_cbox.setHidden(True)
+        self.display_beam_size_cbox.setHidden(False)
         self.coord_label = QtImport.QLabel(":", self)
         self.info_label = QtImport.QLabel(self)
         self.camera_control_dialog = CameraControlDialog(self)
@@ -238,9 +240,9 @@ class CameraBrick(BaseWidget):
                 self.main_layout.addWidget(self.info_widget)
                 self.set_fixed_size()
                 self.init_image_scale_list()
-                if hasattr(self.graphics_manager_hwobj, "camera_hwobj"):
+                if hasattr(self.graphics_manager_hwobj, "camera"):
                     self.camera_control_dialog.set_camera_hwobj(
-                        self.graphics_manager_hwobj.camera_hwobj
+                        self.graphics_manager_hwobj.camera
                     )
         elif property_name == "fixedSize":
             try:
@@ -255,7 +257,15 @@ class CameraBrick(BaseWidget):
         elif property_name == "displayScale":
             self.display_scale = new_value
             if self.graphics_manager_hwobj is not None:
-                self.graphics_manager_hwobj.set_scale_visible(new_value)
+                if hasattr(self.graphics_manager_hwobj, "set_scale_visible"):
+                    # NBNB Where did this code come from? SHould probvably be removed
+                    # no known function "set_scale_visible" anywhere. TODO remove
+                    self.graphics_manager_hwobj.set_scale_visible(new_value)
+                else:
+                    logging.getLogger().info(
+                        "No such function: sample_view.set_scale_visible()"
+                    )
+
         elif property_name == "beamDefiner":
             self.define_beam_action.setEnabled(new_value)
         elif property_name == "cameraControls":
@@ -302,12 +312,14 @@ class CameraBrick(BaseWidget):
         self.image_scale_list = self.graphics_manager_hwobj.get_image_scale_list()
         if len(self.image_scale_list) > 0:
             self.image_scale_menu.setEnabled(True)
+            self.image_scale_action_group = QtImport.QActionGroup(self.image_scale_menu)
             for scale in self.image_scale_list:
                 # probably there is a way to use a single method for all actions
                 # by passing index. lambda function at first try did not work
-                self.image_scale_menu.addAction(
+                action_temp = self.image_scale_menu.addAction(
                     "%d %%" % (scale * 100), self.not_used_function
                 )
+                self.image_scale_action_group.addAction(action_temp)
             for action in self.image_scale_menu.actions():
                 action.setCheckable(True)
             self.image_scaled(self.graphics_manager_hwobj.get_image_scale())
@@ -409,7 +421,6 @@ class CameraControlDialog(QtImport.QDialog):
         )
 
         # Internal variables --------------------------------------------------
-        self.camera_hwobj = None
 
         # Graphic elements ----------------------------------------------------
         self.contrast_slider = QtImport.QSlider(QtImport.Qt.Horizontal, self)
@@ -490,71 +501,70 @@ class CameraControlDialog(QtImport.QDialog):
         self.setWindowTitle("Camera controls")
 
     def set_camera_hwobj(self, camera_hwobj):
-        self.camera_hwobj = camera_hwobj
 
         # get attribute value
         try:
-            contrast_value = self.camera_hwobj.get_contrast()
+            contrast_value = self.graphics_manager_hwobj.camera.get_contrast()
         except AttributeError:
             contrast_value = None
         try:
-            brightness_value = self.camera_hwobj.get_brightness()
+            brightness_value = self.graphics_manager_hwobj.camera.get_brightness()
         except AttributeError:
             brightness_value = None
         try:
-            gain_value = self.camera_hwobj.get_gain()
+            gain_value = self.graphics_manager_hwobj.camera.get_gain()
         except AttributeError:
             gain_value = None
         try:
-            gamma_value = self.camera_hwobj.get_gamma()
+            gamma_value = self.graphics_manager_hwobj.camera.get_gamma()
         except AttributeError:
             gamma_value = None
         try:
-            exposure_time_value = self.camera_hwobj.get_exposure_time()
+            exposure_time_value = self.graphics_manager_hwobj.camera.get_exposure_time()
         except AttributeError:
             exposure_time_value = None
 
         # get attribute auto state
         try:
-            contrast_auto = self.camera_hwobj.get_contrast_auto()
+            contrast_auto = self.graphics_manager_hwobj.camera.get_contrast_auto()
         except AttributeError:
             contrast_auto = None
         try:
-            brightness_auto = self.camera_hwobj.get_brightness_auto()
+            brightness_auto = self.graphics_manager_hwobj.camera.get_brightness_auto()
         except AttributeError:
             brightness_auto = None
         try:
-            gain_auto = self.camera_hwobj.get_gain_auto()
+            gain_auto = self.graphics_manager_hwobj.camera.get_gain_auto()
         except AttributeError:
             gain_auto = None
         try:
-            gamma_auto = self.camera_hwobj.get_gamma_auto()
+            gamma_auto = self.graphics_manager_hwobj.camera.get_gamma_auto()
         except AttributeError:
             gamma_auto = None
         try:
-            exposure_time_auto = self.camera_hwobj.get_exposure_time_auto()
+            exposure_time_auto = self.graphics_manager_hwobj.camera.get_exposure_time_auto()
         except AttributeError:
             exposure_time_auto = None
 
         # get attribute range
         try:
-            contrast_min_max = self.camera_hwobj.get_contrast_min_max()
+            contrast_min_max = self.graphics_manager_hwobj.camera.get_contrast_min_max()
         except AttributeError:
             contrast_min_max = (0, 100)
         try:
-            brightness_min_max = self.camera_hwobj.get_brightness_min_max()
+            brightness_min_max = self.graphics_manager_hwobj.camera.get_brightness_min_max()
         except AttributeError:
             brightness_min_max = (0, 100)
         try:
-            gain_min_max = self.camera_hwobj.get_gain_min_max()
+            gain_min_max = self.graphics_manager_hwobj.camera.get_gain_min_max()
         except AttributeError:
             gain_min_max = (0, 100)
         try:
-            gamma_min_max = self.camera_hwobj.get_gamma_min_max()
+            gamma_min_max = self.graphics_manager_hwobj.camera.get_gamma_min_max()
         except AttributeError:
             gamma_min_max = (0, 100)
         try:
-            exposure_time_min_max = self.camera_hwobj.get_exposure_time_min_max()
+            exposure_time_min_max = self.graphics_manager_hwobj.camera.get_exposure_time_min_max()
         except AttributeError:
             exposure_time_min_max = (0, 100)
 
@@ -634,59 +644,59 @@ class CameraControlDialog(QtImport.QDialog):
     def set_contrast(self, value):
         self.contrast_slider.setValue(value)
         self.contrast_doublespinbox.setValue(value)
-        self.camera_hwobj.set_contrast(value)
+        self.graphics_manager_hwobj.camera.set_contrast(value)
 
     def set_brightness(self, value):
         self.brightness_slider.setValue(value)
         self.brightness_doublespinbox.setValue(value)
-        self.camera_hwobj.set_brightness(value)
+        self.graphics_manager_hwobj.camera.set_brightness(value)
 
     def set_gain(self, value):
         self.gain_slider.setValue(value)
         self.gain_doublespinbox.setValue(value)
-        self.camera_hwobj.set_gain(value)
+        self.graphics_manager_hwobj.camera.set_gain(value)
 
     def set_gamma(self, value):
         self.gamma_slider.setValue(value)
         self.gamma_doublespinbox.setValue(value)
-        self.camera_hwobj.set_gamma(value)
+        self.graphics_manager_hwobj.camera.set_gamma(value)
 
     def set_exposure_time(self, value):
         self.exposure_time_slider.setValue(value)
         self.exposure_time_doublespinbox.setValue(value)
-        self.camera_hwobj.set_exposure_time(value)
+        self.graphics_manager_hwobj.camera.set_exposure_time(value)
 
     def set_contrast_auto(self, state):
         state = bool(state)
-        self.camera_hwobj.set_contrast_auto(state)
-        value = self.camera_hwobj.get_contrast()
+        self.graphics_manager_hwobj.camera.set_contrast_auto(state)
+        value = self.graphics_manager_hwobj.camera.get_contrast()
         self.contrast_slider.setValue(value)
         self.contrast_doublespinbox.setValue(value)
 
     def set_brightness_auto(self, state):
         state = bool(state)
-        self.camera_hwobj.set_brightness_auto(state)
-        value = self.camera_hwobj.get_brightness()
+        self.graphics_manager_hwobj.camera.set_brightness_auto(state)
+        value = self.graphics_manager_hwobj.camera.get_brightness()
         self.brightness_slider.setValue(value)
         self.brightness_doublespinbox.setValue(value)
 
     def set_gain_auto(self, state):
         state = bool(state)
-        self.camera_hwobj.set_gain_auto(state)
-        value = self.camera_hwobj.get_gain()
+        self.graphics_manager_hwobj.camera.set_gain_auto(state)
+        value = self.graphics_manager_hwobj.camera.get_gain()
         self.gain_slider.setValue(value)
         self.gain_doublespinbox.setValue(value)
 
     def set_gamma_auto(self, state):
         state = bool(state)
-        self.camera_hwobj.set_gamma_auto(state)
-        value = self.camera_hwobj.get_gamma()
+        self.graphics_manager_hwobj.camera.set_gamma_auto(state)
+        value = self.graphics_manager_hwobj.camera.get_gamma()
         self.gamma_slider.setValue(value)
         self.gamma_doublespinbox.setValue(value)
 
     def set_exposure_time_auto(self, state):
         state = bool(state)
-        self.camera_hwobj.set_exposure_time_auto(state)
-        value = self.camera_hwobj.get_exposure_time()
+        self.graphics_manager_hwobj.camera.set_exposure_time_auto(state)
+        value = self.graphics_manager_hwobj.camera.get_exposure_time()
         self.exposure_time_slider.setValue(value)
         self.exposure_time_doublespinbox.setValue(value)

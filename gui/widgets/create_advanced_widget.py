@@ -19,13 +19,15 @@
 
 import logging
 
-import api
 from gui.utils import queue_item, QtImport
 from gui.widgets.create_task_base import CreateTaskBase
 from gui.widgets.data_path_widget import DataPathWidget
 from gui.widgets.acquisition_widget import AcquisitionWidget
+from gui.widgets.comments_widget import CommentsWidget
 
 from HardwareRepository.HardwareObjects import queue_model_objects
+
+from HardwareRepository import HardwareRepository as HWR
 
 
 __credits__ = ["MXCuBE collaboration"]
@@ -74,11 +76,14 @@ class CreateAdvancedWidget(CreateTaskBase):
             layout="vertical",
         )
 
+        self._comments_widget = CommentsWidget(self)
+
         # Layout --------------------------------------------------------------
         _main_vlayout = QtImport.QVBoxLayout(self)
         _main_vlayout.addWidget(self._advanced_methods_widget)
         _main_vlayout.addWidget(self._acq_widget)
         _main_vlayout.addWidget(self._data_path_widget)
+        _main_vlayout.addWidget(self._comments_widget)
         _main_vlayout.addStretch(0)
         _main_vlayout.setSpacing(6)
         _main_vlayout.setContentsMargins(2, 2, 2, 2)
@@ -139,6 +144,9 @@ class CreateAdvancedWidget(CreateTaskBase):
         self._advanced_methods_widget.move_to_grid_button.clicked.connect(
             self.move_to_grid
         )
+        self._advanced_methods_widget.method_combo.activated.connect(
+            self.method_combo_activated
+        )
 
         # Other ---------------------------------------------------------------
         self._acq_widget.use_osc_start(False)
@@ -152,9 +160,7 @@ class CreateAdvancedWidget(CreateTaskBase):
             "Total osc. range per line"
         )
 
-        self._advanced_methods = (
-            api.beamline_setup.get_advanced_methods()
-        )
+        self._advanced_methods = list(HWR.beamline.advanced_methods)
         if self._advanced_methods:
             for method in self._advanced_methods:
                 self._advanced_methods_widget.method_combo.addItem(method)
@@ -165,7 +171,7 @@ class CreateAdvancedWidget(CreateTaskBase):
             "Oscillation middle:"
         )
 
-        hor_size, ver_size = api.beam_info.get_beam_size()
+        hor_size, ver_size = HWR.beamline.beam.get_beam_size()
         self.spacing[0] = hor_size
         self.spacing[1] = ver_size
 
@@ -176,9 +182,10 @@ class CreateAdvancedWidget(CreateTaskBase):
             "%.1f" % (ver_size * 1000)
         )
 
-        api.graphics.connect("shapeCreated", self.shape_created)
-        api.graphics.connect("shapeChanged", self.shape_changed)
-        api.graphics.connect("shapeDeleted", self.shape_deleted)
+        HWR.beamline.sample_view.connect("shapeCreated", self.shape_created)
+        HWR.beamline.sample_view.connect("shapeChanged", self.shape_changed)
+        HWR.beamline.sample_view.connect("shapeDeleted", self.shape_deleted)
+        self._comments_widget.setHidden(True)
 
     def enable_widgets(self, state):
         return
@@ -186,35 +193,29 @@ class CreateAdvancedWidget(CreateTaskBase):
         self._data_path_widget.setEnabled(state)
 
     def init_models(self):
-        """
-        Descript. :
-        """
         CreateTaskBase.init_models(self)
-        self._init_models()
 
-    def _init_models(self):
-        """
-        Descript. :
-        """
-        CreateTaskBase.init_models(self)
         self._processing_parameters = queue_model_objects.ProcessingParameters()
 
-        has_shutter_less = api.beamline_setup.detector_has_shutterless()
+        has_shutter_less = HWR.beamline.detector.has_shutterless()
         self._acquisition_parameters.shutterless = has_shutter_less
 
-        self._acquisition_parameters = api.beamline_setup.get_default_acquisition_parameters(
-            "default_advanced_values"
+        self._acquisition_parameters = (
+            HWR.beamline.get_default_acquisition_parameters("advanced")
         )
 
     def set_beam_info(self, beam_info):
-        self.spacing[0] = beam_info["size_x"]
-        self.spacing[1] = beam_info["size_y"]
-        self._advanced_methods_widget.hor_spacing_ledit.setText(
-            "%.1f" % (beam_info["size_x"] * 1000)
-        )
-        self._advanced_methods_widget.ver_spacing_ledit.setText(
-            "%.1f" % (beam_info["size_x"] * 1000)
-        )
+        try:
+            self.spacing[0] = beam_info["size_x"]
+            self.spacing[1] = beam_info["size_y"]
+            self._advanced_methods_widget.hor_spacing_ledit.setText(
+                "%.1f" % (beam_info["size_x"] * 1000)
+            )
+            self._advanced_methods_widget.ver_spacing_ledit.setText(
+                "%.1f" % (beam_info["size_x"] * 1000)
+            )
+        except:
+            pass
 
     def approve_creation(self):
         """
@@ -227,7 +228,7 @@ class CreateAdvancedWidget(CreateTaskBase):
             msg = "No grid selected. Please select a grid to continue!"
             logging.getLogger("GUI").warning(msg)
             result = False
-            # selected_grid = api.graphics.get_auto_grid()
+            # selected_grid = HWR.beamline.sample_view.get_auto_grid()
         else:
             grid_properties = selected_grid.get_properties()
             exp_time = float(self._acq_widget.acq_widget_layout.exp_time_ledit.text())
@@ -247,12 +248,6 @@ class CreateAdvancedWidget(CreateTaskBase):
                 )
                 return False
         return result
-
-    def update_processing_parameters(self, crystal):
-        """
-        Descript. :
-        """
-        return
 
     def single_item_selection(self, tree_item):
         """
@@ -281,7 +276,7 @@ class CreateAdvancedWidget(CreateTaskBase):
                 self.setDisabled(False)
 
             if data_collection.is_mesh():
-                api.graphics.select_shape(data_collection.grid)
+                HWR.beamline.sample_view.select_shape(data_collection.grid)
                 self._advanced_methods_widget.grid_treewidget.setCurrentItem(
                     self._grid_map[data_collection.grid]
                 )
@@ -301,7 +296,7 @@ class CreateAdvancedWidget(CreateTaskBase):
             self.setDisabled(True)
         self.grid_treewidget_item_selection_changed()
 
-    def _create_task(self, sample, shape):
+    def _create_task(self, sample, shape, comments=None):
         """Creates tasks based on selected grids
 
         :param sample: selected sample object
@@ -309,9 +304,13 @@ class CreateAdvancedWidget(CreateTaskBase):
         :param shape: selected shape
         :type shape: GraphicsLib.GraphicsItem
         """
+
         tasks = []
         selected_grid = self.get_selected_shapes()[0]
         mesh_dc = self._create_dc_from_grid(sample, selected_grid)
+
+        cpos = queue_model_objects.CentredPosition()
+        cpos.snapshot_image = HWR.beamline.sample_view.get_snapshot()
 
         exp_type = str(self._advanced_methods_widget.method_combo.currentText())
         if exp_type == "MeshScan":
@@ -319,6 +318,15 @@ class CreateAdvancedWidget(CreateTaskBase):
         elif exp_type == "XrayCentering":
             xray_centering = queue_model_objects.XrayCentering(mesh_dc)
             tasks.append(xray_centering)
+        elif exp_type == "MXPressO":
+            optical_centering = queue_model_objects.OpticalCentring()
+ 
+            dc_task = self.create_dc(sample, cpos=cpos)[0]
+            dc_task.set_requires_centring(False)
+            
+            tasks.append(optical_centering)
+            tasks.append(dc_task)
+
         else:
             logging.getLogger("GUI").warning(
                 "Method %s does not exist in queue_model_objects" % exp_type
@@ -454,7 +462,7 @@ class CreateAdvancedWidget(CreateTaskBase):
     def draw_grid_button_clicked(self):
         """Starts grid drawing
         """
-        api.graphics.create_grid(self.spacing)
+        HWR.beamline.sample_view.create_grid(self.spacing)
 
     def remove_grid_button_clicked(self):
         """Removes selected grid
@@ -462,7 +470,7 @@ class CreateAdvancedWidget(CreateTaskBase):
         grid_to_delete = self.get_selected_shapes()[0]
 
         if grid_to_delete:
-            api.graphics.delete_shape(grid_to_delete)
+            HWR.beamline.sample_view.delete_shape(grid_to_delete)
             self._advanced_methods_widget.move_to_grid_button.setEnabled(False)
 
     def hor_spacing_changed(self, value):
@@ -514,9 +522,12 @@ class CreateAdvancedWidget(CreateTaskBase):
         grid = self.get_selected_shapes()[0]
 
         if grid:
-            api.diffractometer.move_to_centred_position(
+            HWR.beamline.diffractometer.move_to_centred_position(
                 grid.get_centred_position()
             )
+
+    def method_combo_activated(self, index):
+        self._task_node_name = self._advanced_methods_widget.method_combo.currentText()
 
     def overlay_toggled(self, state):
         """Toggles (on/off) overlay
@@ -553,7 +564,7 @@ class CreateAdvancedWidget(CreateTaskBase):
 
         if grid:
             grid.move_by_pix(direction)
-            api.graphics.update_grid_motor_positions(grid)
+            HWR.beamline.sample_view.update_grid_motor_positions(grid)
 
     def enable_grid_controls(self, state):
         """Enables grid controls if a grid is selectd
