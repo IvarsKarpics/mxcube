@@ -110,5 +110,5 @@ class LogBarBrick(BaseWidget):
 
             if level == logging.ERROR:
                 self._status_bar_widget.toggle_background_color()
-                if test_mode:
+                if self.test_mode:
                     assert False, msg

@@ -1,26 +1,20 @@
-"""
-import pytest
+#!/usr/bin/env python
 import sys
 import os
+import gevent
 
-TESTS_DIR = os.path.abspath(os.path.dirname(__file__))
-MXCUBE = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
-HWR_XML_FILES = os.path.join(MXCUBE, "HardwareRepository/configuration/xml-qt")
+MXCUBE_ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../"))
+HWR_DIR = os.path.join(MXCUBE_ROOT, "HardwareRepository")
 
-sys.path.insert(0, MXCUBE)
-print ("MXCuBE root: %s" % MXCUBE)
-print ("Config path: %s" % HWR_XML_FILES)
+print("MXCuBE root: %s" % MXCUBE_ROOT)
 
-from HardwareRepository import HardwareRepository as HWR
-
-@pytest.fixture(scope="session")
-def hwr():
-    HWR.init_hardware_repository(HWR_XML_FILES)
-    hwr = HWR.get_hardware_repository()
-    hwr.connect()
-    return hwr
-
-@pytest.fixture(scope="session")
-def blsetup(hwr):
-    return hwr.get_hardware_object("beamline-setup")
-"""
+sys.path.insert(0, MXCUBE_ROOT)
+MXCUBE_GUI_FILE = os.path.join(MXCUBE_ROOT,
+                               "configuration/example_mxcube_gui.yml")
+HWR_CONIG = "%s%s%s" % (
+    os.path.join(HWR_DIR, "configuration/mockup"),
+    os.path.pathsep,
+    os.path.join(HWR_DIR, "configuration/mockup/test")
+)
+                               
+os.environ['HARDWARE_REPOSITORY_SERVER'] = HWR_CONIG
