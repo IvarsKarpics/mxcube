@@ -18,7 +18,7 @@ before_script:
 
 script:
   - cd test
-  - travis_wait 20 python -m pytest
+  - python -m pytest
   - cd ..
   - pylint -E gui/*py --extension-pkg-whitelist=PyQt5,PyQt4
     #- travis_wait 20 pylint -E gui/bricks --extension-pkg-whitelist=PyQt5,PyQt4
